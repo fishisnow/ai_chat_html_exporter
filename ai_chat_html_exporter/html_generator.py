@@ -5,31 +5,25 @@ import os
 import webbrowser
 import re
 from pathlib import Path
-from typing import Any
-
-from langchain.callbacks import StdOutCallbackHandler
+from typing import Any, List, Dict, Optional, Union
 
 
-class HtmlExporter(StdOutCallbackHandler):
-    """将 AI 对话历史导出为 HTML 文件的回调处理器"""
-
-    def __init__(
-            self,
-            output_dir: str = "logs",
-            auto_open: bool = True
-    ):
-        """初始化导出器
-
+class HtmlGenerator:
+    """HTML 生成和导出工具，可复用于不同的日志收集场景"""
+    
+    def __init__(self, output_dir: str = "logs"):
+        """初始化 HTML 生成器
+        
         Args:
             output_dir: 输出目录，默认为 "logs"
-            auto_open: 是否自动在浏览器中打开生成的 HTML 文件
         """
-        super().__init__()
         self.output_dir = output_dir
-        self.auto_open = auto_open
-        self.html_file = self._create_html_file()
-
-    def _create_html_file(self) -> str:
+        self.html_file = None
+        
+        # 确保输出目录存在
+        Path(output_dir).mkdir(exist_ok=True)
+    
+    def create_html_file(self) -> str:
         """创建新的 HTML 文件并添加基本样式"""
         html_content = """
         <!DOCTYPE html>
@@ -197,9 +191,6 @@ class HtmlExporter(StdOutCallbackHandler):
             <div id="conversation">
         """
 
-        # 确保输出目录存在
-        Path(self.output_dir).mkdir(exist_ok=True)
-
         # 创建新的HTML文件
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         html_file = os.path.join(self.output_dir, f"conversation_{timestamp}.html")
@@ -207,25 +198,19 @@ class HtmlExporter(StdOutCallbackHandler):
         with open(html_file, "w", encoding="utf-8") as f:
             f.write(html_content)
 
+        self.html_file = html_file
         return html_file
 
     def _escape_html(self, text: str) -> str:
         """转义 HTML 特殊字符"""
-        return html.escape(text)
+        return html.escape(str(text))
 
     def _process_content(self, content: str) -> str:
         """处理内容中的Markdown、代码和图片"""
         processed = self._escape_html(content)
-
-        # 检测代码块 (```language\n...```)
         processed = self._detect_code_blocks(processed)
-
-        # 检测图片URL和Base64图片
         processed = self._detect_images(processed)
-
-        # 检测内联代码 (`code`)
         processed = self._detect_inline_code(processed)
-
         return processed
 
     def _detect_code_blocks(self, text: str) -> str:
@@ -254,17 +239,16 @@ class HtmlExporter(StdOutCallbackHandler):
 
     def _detect_images(self, text: str) -> str:
         """检测并替换图片URL和Base64图片为img标签"""
-        # 1. 处理普通图片URL
+        # 处理普通图片URL
         url_pattern = r'(https?://\S+\.(?:png|jpg|jpeg|gif|webp))'
         text = re.sub(url_pattern, r'<div class="image-container"><img src="\1" alt="图片"></div>', text)
 
-        # 2. 处理Base64编码的图片
+        # 处理Base64编码的图片
         base64_pattern = r'(data:image/(?:png|jpg|jpeg|gif|webp);base64,[a-zA-Z0-9+/]+={0,2})'
         return re.sub(base64_pattern, r'<div class="image-container"><img src="\1" alt="Base64图片"></div>', text)
 
     def _detect_inline_code(self, text: str) -> str:
         """检测内联代码"""
-        # 处理成对的 ` 符号
         parts = text.split('`')
         result = []
         for i, part in enumerate(parts):
@@ -274,8 +258,38 @@ class HtmlExporter(StdOutCallbackHandler):
                 result.append(part)
         return ''.join(result)
 
-    def _append_to_html(self, role: str, content: Any) -> None:
+    def _format_tool_calls(self, tool_calls: list) -> list:
+        """格式化工具调用信息"""
+        result = []
+        
+        for tool_call in tool_calls:
+            if isinstance(tool_call, dict):
+                # 处理API响应中的原始JSON格式
+                function_name = tool_call.get("function", {}).get("name", "unknown")
+                try:
+                    function_args = json.loads(tool_call.get("function", {}).get("arguments", "{}"))
+                except:
+                    function_args = tool_call.get("function", {}).get("arguments", {})
+            else:
+                # 处理其他可能的格式
+                function_name = getattr(getattr(tool_call, "function", {}), "name", "unknown")
+                try:
+                    function_args = json.loads(getattr(getattr(tool_call, "function", {}), "arguments", "{}"))
+                except:
+                    function_args = getattr(getattr(tool_call, "function", {}), "arguments", {})
+            
+            result.append({
+                'function_name': function_name,
+                'function_args': function_args
+            })
+            
+        return result
+
+    def append_message(self, role: str, content: Any) -> None:
         """将新的对话内容追加到 HTML 文件中"""
+        if not self.html_file:
+            self.create_html_file()
+            
         message_html = f'<div class="message {role}">'
 
         if role == "user":
@@ -285,12 +299,14 @@ class HtmlExporter(StdOutCallbackHandler):
             # AI 响应消息
             if isinstance(content, dict):
                 # 展示主要响应文本
-                message_html += self._process_content(content['response'])
+                content_text = content.get('content', content.get('response', ''))
+                message_html += self._process_content(content_text)
 
                 # 如果有工具调用，单独展示
-                if content.get('tool_calls'):
-                    for tool_call in content['tool_calls']:
-                        message_html += f'<div class="tool-call-container"><div class="tool-call-header"><svg class="tool-call-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" /></svg><div class="tool-call-title">Tool | {tool_call['function_name']}</div></div><pre><code>{json.dumps(tool_call['function_args'], indent=2, ensure_ascii=False)}</code></pre></div>'
+                tool_calls = content.get('tool_calls', [])
+                if tool_calls:
+                    for tool_call in tool_calls:
+                        message_html += f'<div class="tool-call-container"><div class="tool-call-header"><svg class="tool-call-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" /></svg><div class="tool-call-title">Tool | {tool_call["function_name"]}</div></div><pre><code>{json.dumps(tool_call["function_args"], indent=2, ensure_ascii=False)}</code></pre></div>'
             else:
                 message_html += self._process_content(content)
 
@@ -299,8 +315,11 @@ class HtmlExporter(StdOutCallbackHandler):
         with open(self.html_file, "a", encoding="utf-8") as f:
             f.write(message_html)
 
-    def _close_html_file(self) -> None:
+    def close_html_file(self) -> None:
         """关闭 HTML 文件"""
+        if not self.html_file:
+            return
+            
         with open(self.html_file, "a", encoding="utf-8") as f:
             f.write("""
             </div>
@@ -309,36 +328,22 @@ class HtmlExporter(StdOutCallbackHandler):
         </html>
         """)
 
-    def on_llm_start(self, serialized: Any, prompts: list[str], **kwargs: Any) -> None:
-        """当 LLM 开始处理时调用"""
-        user_message = prompts[0]
-        self._append_to_html("user", user_message)
 
-    def on_llm_end(self, response: Any, **kwargs: Any) -> None:
-        """当 LLM 结束处理时调用"""
-        assistant_message = {
-            "response": response.generations[0][0].text,
-            "tool_calls": self._format_tool_calls(
-                response.generations[0][0].message.additional_kwargs.get('tool_calls', []))
-        }
-        self._append_to_html("assistant", assistant_message)
-
-    def on_chain_end(self, outputs: Any, **kwargs: Any) -> None:
-        """当链式处理结束时调用"""
-        self._close_html_file()
-        if self.auto_open:
-            webbrowser.open(f"file://{os.path.abspath(self.html_file)}")
-
-    def _format_tool_calls(self, tool_calls: list) -> list:
-        """格式化工具调用信息"""
-        result = []
-        for tool_call in tool_calls:
-            result.append({
-                'function_name': tool_call['function']['name'],
-                'function_args': json.loads(tool_call['function']['arguments'])
-            })
-        return result
-
-    def get_callback(self) -> 'HtmlExporter':
-        """获取回调实例"""
-        return self
+    def export_conversation(self, conversation: List[Dict]) -> None:
+        """导出完整对话历史到 HTML 文件
+        
+        Args:
+            conversation: 对话历史列表，每个元素应包含 role 和 content
+        """
+        # 创建新文件
+        self.create_html_file()
+        
+        # 添加所有对话内容
+        for message in conversation:
+            self.append_message(
+                message["role"], 
+                message["content"] if message["role"] == "user" else message
+            )
+        
+        # 关闭文件
+        self.close_html_file() 

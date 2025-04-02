@@ -40,13 +40,13 @@ pip install dist/ai_chat_html_exporter-0.1.0.tar.gz
 ## 使用方法
 
 ```python
-from ai_chat_html_exporter import HtmlExporter
+from ai_chat_html_exporter import LangchainHtmlExporter
 from langchain_openai import AzureChatOpenAI
 
 # 创建导出器实例
-exporter = HtmlExporter(
+exporter = LangchainHtmlExporter(
     output_dir="logs",  # 可选：自定义输出目录
-    auto_open=True      # 可选：是否自动打开生成的HTML文件
+    auto_open=True  # 可选：是否自动打开生成的HTML文件
 )
 
 # 在 LangChain 中使用
