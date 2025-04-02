@@ -3,6 +3,7 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
+      <excludeFolder url="file://$MODULE_DIR$/ai_chat_html_exporter.egg-info" />
     </content>
     <orderEntry type="jdk" jdkName="OpenManus" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />

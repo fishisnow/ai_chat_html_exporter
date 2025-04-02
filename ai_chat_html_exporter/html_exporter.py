@@ -48,24 +48,72 @@ class HtmlExporter(StdOutCallbackHandler):
                     color: #374151;
                 }
                 .message {
-                    margin: 16px 0;
+                    margin: 20px 0;
                     padding: 16px 20px;
-                    border-radius: 12px;
+                    border-radius: 16px;
                     white-space: pre-wrap;
                     word-wrap: break-word;
                     font-size: 15px;
                     line-height: 1.5;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+                    transition: all 0.2s ease;
+                }
+                
+                .message:hover {
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                }
+                
+                .message > div {
+                    margin: 12px 0;
+                }
+                
+                .message p {
+                    margin: 8px 0;
+                }
+                
+                .message > *:first-child {
+                    margin-top: 0;
+                }
+                
+                .message > *:last-child {
+                    margin-bottom: 0;
                 }
                 .user {
-                    background-color: #f3f4f6;
+                    background-color: #e9f2ff;
                     margin-right: 15%;
-                    border: 1px solid #e5e7eb;
+                    border: 1px solid #d1e3ff;
+                    position: relative;
                 }
+                
+                .user:before {
+                    content: "用户";
+                    position: absolute;
+                    top: -10px;
+                    left: 12px;
+                    background: #4b7bec;
+                    color: white;
+                    font-size: 12px;
+                    padding: 2px 8px;
+                    border-radius: 10px;
+                }
+                
                 .assistant {
                     background-color: #ffffff;
                     margin-left: 15%;
                     border: 1px solid #e5e7eb;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                    position: relative;
+                }
+                
+                .assistant:before {
+                    content: "AI";
+                    position: absolute;
+                    top: -10px;
+                    left: 12px;
+                    background: #45aaf2;
+                    color: white;
+                    font-size: 12px;
+                    padding: 2px 8px;
+                    border-radius: 10px;
                 }
                 pre {
                     background-color: #f8f9fa;
@@ -85,21 +133,13 @@ class HtmlExporter(StdOutCallbackHandler):
                     border-radius: 4px;
                     font-size: 14px;
                 }
-                .tool-call {
-                    margin: 12px 0;
-                    border: 1px solid #e2e8f0;
-                    border-radius: 8px;
-                    background-color: #f8fafc;
-                    overflow: hidden;
-                    font-size: 14px;
-                }
-                
                 .tool-call-header {
+                    margin: 12px 0 0 0;
                     display: flex;
                     align-items: center;
                     padding: 8px 12px;
                     background-color: #f1f5f9;
-                    border-bottom: 1px solid #e2e8f0;
+                    border-radius: 6px 6px 0 0;
                     font-weight: 500;
                     color: #334155;
                 }
@@ -115,71 +155,17 @@ class HtmlExporter(StdOutCallbackHandler):
                     font-size: 0.9em;
                     font-weight: 600;
                 }
-                
-                .tool-call-content {
-                    padding: 10px 12px;
-                    font-family: 'Menlo', 'Consolas', monospace;
-                    line-height: 1.4;
-                    color: #1e293b;
-                    max-height: 300px;
-                    overflow: auto;
-                    background-color: #f8fafc;
-                    border-radius: 0 0 6px 6px;
+
+                .tool-call-container {
+                    margin: 12px 0;
                 }
                 
-                .tool-call:hover {
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-                    transition: all 0.2s ease;
+                .tool-call-header + pre {
+                    margin-top: 0;
+                    border-top-left-radius: 0;
+                    border-top-right-radius: 0;
                 }
-                
-                .tool-call-content .json-key {
-                    color: #0f766e;
-                    font-weight: 500;
-                    margin-right: 4px;
-                }
-                
-                .tool-call-content .json-string {
-                    color: #0369a1;
-                }
-                
-                .tool-call-content .json-number {
-                    color: #9333ea;
-                }
-                
-                .tool-call-content .json-boolean {
-                    color: #0891b2;
-                }
-                
-                .tool-call-content .json-null {
-                    color: #dc2626;
-                }
-                
-                .tool-call-content .json-punctuation {
-                    color: #94a3b8;
-                }
-                
-                .tool-calls-content pre {
-                    margin: 0;                 /* 移除pre标签的默认外边距 */
-                    padding: 0;                /* 移除pre标签的默认内边距 */
-                    background: none;          /* 移除pre标签的背景色 */
-                    border: none;              /* 移除pre标签的边框 */
-                }
-                .tool-calls-content .key {
-                    color: #0f766e;
-                    font-weight: 500;
-                }
-                .tool-calls-content .string {
-                    color: #0369a1;
-                }
-                .tool-calls-content .number {
-                    color: #9333ea;
-                }
-                .tool-calls-content .boolean {
-                    color: #0891b2;
-                }
-                .tool-calls-content .null {
-                    color: #dc2626;
-                }
+
                 h1 {
                     color: #111827;
                     font-size: 1.5em;
@@ -226,28 +212,6 @@ class HtmlExporter(StdOutCallbackHandler):
     def _escape_html(self, text: str) -> str:
         """转义 HTML 特殊字符"""
         return html.escape(text)
-
-    def _format_json_for_html(self, json_data: Any) -> str:
-        """将 JSON 数据格式化为带颜色的 HTML"""
-        if isinstance(json_data, str):
-            return f'<span class="json-string">"{self._escape_html(json_data)}"</span>'
-        elif isinstance(json_data, bool):
-            return f'<span class="json-boolean">{str(json_data).lower()}</span>'
-        elif isinstance(json_data, (int, float)):
-            return f'<span class="json-number">{json_data}</span>'
-        elif json_data is None:
-            return '<span class="json-null">null</span>'
-        elif isinstance(json_data, dict):
-            items = []
-            for key, value in json_data.items():
-                items.append(
-                    f'<span class="json-key">"{self._escape_html(key)}"</span>: {self._format_json_for_html(value)}')
-            return '{' + ', '.join(items) + '}'
-        elif isinstance(json_data, list):
-            items = [self._format_json_for_html(item) for item in json_data]
-            return '[' + ', '.join(items) + ']'
-        return str(json_data)
-
 
     def _process_content(self, content: str) -> str:
         """处理内容中的Markdown、代码和图片"""
@@ -326,19 +290,7 @@ class HtmlExporter(StdOutCallbackHandler):
                 # 如果有工具调用，单独展示
                 if content.get('tool_calls'):
                     for tool_call in content['tool_calls']:
-                        message_html += f"""
-                            <div class="tool-call">
-                                <div class="tool-call-header">
-                                    <svg class="tool-call-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" />
-                                    </svg>
-                                    <div class="tool-call-title">Tool | {tool_call['function_name']}</div>
-                                </div>
-                                <div class="tool-call-content">
-                                    {self._format_json_for_html(tool_call['function_args'])}
-                                </div>
-                            </div>
-                        """
+                        message_html += f'<div class="tool-call-container"><div class="tool-call-header"><svg class="tool-call-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" /></svg><div class="tool-call-title">Tool | {tool_call['function_name']}</div></div><pre><code>{json.dumps(tool_call['function_args'], indent=2, ensure_ascii=False)}</code></pre></div>'
             else:
                 message_html += self._process_content(content)
 
