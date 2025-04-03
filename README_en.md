@@ -1,5 +1,5 @@
 
-English | [中文](README)
+English | [中文](README.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) &ensp;
 
@@ -10,7 +10,7 @@ A professional AI conversation history export tool that intelligently converts y
 ![Version](https://img.shields.io/badge/Version-1.0.0-blue)
 ![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen)
 ![License](https://img.shields.io/badge/License-MIT-green)
-![Python](https://img.shields.io/badge/Python-3.7+-yellow)
+![Python](https://img.shields.io/badge/Python-3.10+-yellow)
 
 ## ✨ Key Features
 
@@ -82,7 +82,7 @@ exporter = HtmlExportCallbackHandler(output_dir="my_chat_logs")
 
 ## 📦 System Requirements
 
-- Python >= 3.7
+- Python >= 3.10
 - langchain-core >= 0.1.0
 - python-dotenv >= 1.0.0
 - openai >= 1.6.1

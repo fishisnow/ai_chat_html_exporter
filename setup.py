@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="ai_chat_html_exporter",
-    version="0.1.0",
+    version="1.0.0",
     packages=find_packages(),
     install_requires=[
         "langchain-core>=0.3.0",
@@ -14,7 +14,7 @@ setup(
     description="A tool to export AI chat history to HTML with syntax highlighting",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/ai-chat-html-exporter",
+    url="https://github.com/fishisnow/ai-chat-html-exporter",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
