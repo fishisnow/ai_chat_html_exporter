@@ -1,89 +1,126 @@
-# AI Chat HTML Exporter
+中文 | [English](README_en.md)
 
-一个用于将 AI 对话历史导出为美观 HTML 文件的 Python 工具。
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) &ensp;
 
-## 功能特点
+# AI Chat HTML 导出器
 
-- 自动将 AI 对话历史保存为 HTML 文件
-- 支持代码语法高亮
-- 支持 JSON 数据格式化
-- 美观的响应式界面
-- 支持实时预览
-- 自动在浏览器中打开生成的文件（可配置）
+一个专业的 AI 对话历史导出工具，将您与 AI 的对话智能转换为精美 HTML 文件，助力开发调试与 Prompt 观察。
 
-## 安装
+![版本](https://img.shields.io/badge/版本-1.0.0-blue)
+![构建状态](https://img.shields.io/badge/构建-通过-brightgreen)
+![许可证](https://img.shields.io/badge/许可证-MIT-green)
+![Python](https://img.shields.io/badge/Python-3.10+-yellow)
 
-### 从 PyPI 安装（尚未发布）
+## ✨ 核心亮点
+
+- 🚀 **极简集成** - 仅需一行代码，轻松收集 AI 对话日志
+- 🔍 **透明调试** - 直观了解 AI Agent 的行为过程，无需繁琐的 langsmith 配置
+- 💎 **精美展示** - 响应式界面设计，代码语法高亮，JSON 数据格式化
+- 🌐 **即时预览** - 支持浏览器中实时查看对话历史
+- 🎨 **图片支持** - 自动识别对话中的 base64 和 URL 图片，展示图像内容
+- 🛠 **多框架支持** - 完美兼容 LangChain 和 OpenAI API
+
+## 📋 应用场景
+
+- AI 应用开发调试过程中快速记录对话历史
+- 收集和展示 AI 交互示例
+- 保存重要的 AI 对话以供日后参考
+- 分享 AI 对话成果给团队成员
+
+## 🔧 安装方法
+
+### 从 PyPI 安装
 ```bash
 pip install ai-chat-html-exporter
 ```
 
-### 本地安装
-
-1. 克隆仓库
+### 本地开发安装
 ```bash
 git clone https://github.com/yourusername/ai-chat-html-exporter.git
 cd ai-chat-html-exporter
-```
-
-2. 开发模式安装
-```bash
 pip install -e .
 ```
 
-或者构建并安装：
-```bash
-python setup.py sdist bdist_wheel
-pip install dist/ai_chat_html_exporter-0.1.0.tar.gz
-```
+## 🚀 快速上手
 
-## 使用方法
+### LangChain 集成示例
 
 ```python
-from ai_chat_html_exporter import LangchainHtmlExporter
+from ai_chat_html_exporter import HtmlExportCallbackHandler
 from langchain_openai import AzureChatOpenAI
 
 # 创建导出器实例
-exporter = LangchainHtmlExporter(
-    output_dir="logs",  # 可选：自定义输出目录
-    auto_open=True  # 可选：是否自动打开生成的HTML文件
-)
-
-# 在 LangChain 中使用
 llm = AzureChatOpenAI(
     model="gpt-4",
-    callbacks=[exporter.get_callback()]
+    callbacks=[HtmlExportCallbackHandler()]  # 只需添加这一行
 )
 
-# 对话内容会自动保存到 logs 目录下的 HTML 文件中
+# 对话内容会自动保存到 logs 目录下的精美 HTML 文件中
 ```
 
-## 配置选项
+### OpenAI API 集成示例
+```python
+from ai_chat_html_exporter.openai_chat_html_exporter import with_html_logger
+from openai import AsyncOpenAI
 
-- `output_dir`: 输出目录，默认为 "logs"
-- `auto_open`: 是否自动在浏览器中打开生成的 HTML 文件，默认为 True
+@with_html_logger  # 只需添加这个装饰器
+def get_openai_client(self):
+    return AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
+```
 
-## 输出示例
+## ⚙️ 自定义配置
 
-生成的 HTML 文件将包含：
-- 时间戳记录
-- 用户消息和 AI 响应的清晰区分
-- 代码块和 JSON 的语法高亮
-- 响应式布局，适配不同屏幕尺寸
+```python
+# 自定义输出目录
+from ai_chat_html_exporter import HtmlExportCallbackHandler
+exporter = HtmlExportCallbackHandler(output_dir="my_chat_logs")
 
-## 依赖项
+# 更多配置选项即将推出...
+```
 
-- Python >= 3.7
-- langchain >= 0.1.0
+## 📊 输出效果展示
+
+![对话历史展示](images/example.png)
+
+生成的 HTML 文件特点：
+- 用户消息与 AI 响应清晰区分
+- 代码块语法高亮，支持多种编程语言
+- JSON 数据智能格式化与着色
+- 自适应布局，全设备友好
+
+## 📦 系统要求
+
+- Python >= 3.10
 - langchain-core >= 0.1.0
-- langchain-openai >= 0.0.5
-- pygments >= 2.15.0
 - python-dotenv >= 1.0.0
+- openai >= 1.6.1
 
-## 贡献
+## 🔜 未来规划
 
-欢迎提交 Issue 和 Pull Request！
+- [ ] 支持更多的 AI 框架集成
 
-## 许可证
+## 🤝 参与贡献
 
-MIT License
+我们欢迎各种形式的贡献！
+
+1. Fork 本仓库
+2. 创建您的特性分支 (`git checkout -b feature/amazing-feature`)
+3. 提交您的更改 (`git commit -m 'Add some amazing feature'`)
+4. 推送到分支 (`git push origin feature/amazing-feature`)
+5. 打开一个 Pull Request
+
+也欢迎提交 Issue 反馈问题或建议！
+
+## 📄 许可证
+
+本项目采用 MIT 许可证 - 详情请参阅 [LICENSE](LICENSE) 文件
+
+## 🔗 相关链接
+
+- [项目文档](https://github.com/yourusername/ai-chat-html-exporter)
+- [问题反馈](https://github.com/yourusername/ai-chat-html-exporter/issues)
+- [贡献指南](https://github.com/yourusername/ai-chat-html-exporter/blob/main/CONTRIBUTING.md)
+
+---
+
+如果这个项目对您有帮助，请给它一个⭐️！

@@ -6,7 +6,7 @@ from langchain.callbacks import StdOutCallbackHandler
 from .html_generator import HtmlGenerator
 
 
-class LangchainHtmlExporter(StdOutCallbackHandler, HtmlGenerator):
+class HtmlExportCallbackHandler(StdOutCallbackHandler, HtmlGenerator):
     """将 AI 对话历史导出为 HTML 文件的回调处理器"""
 
     def __init__(
@@ -51,6 +51,6 @@ class LangchainHtmlExporter(StdOutCallbackHandler, HtmlGenerator):
             })
         return result
 
-    def get_callback(self) -> 'LangchainHtmlExporter':
+    def get_callback(self) -> 'HtmlExportCallbackHandler':
         """获取回调实例"""
         return self
