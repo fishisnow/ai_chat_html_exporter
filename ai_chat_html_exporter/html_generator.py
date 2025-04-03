@@ -1,11 +1,10 @@
-from datetime import datetime
 import html
 import json
 import os
-import webbrowser
 import re
+from datetime import datetime
 from pathlib import Path
-from typing import Any, List, Dict, Optional, Union
+from typing import Any, List, Dict
 
 
 class HtmlGenerator:
@@ -109,6 +108,27 @@ class HtmlGenerator:
                     padding: 2px 8px;
                     border-radius: 10px;
                 }
+
+                .system {
+                    background-color: #f0f9ff;
+                    margin: 20px 0;
+                    border: 1px solid #bae6fd;
+                    position: relative;
+                    font-style: italic;
+                }
+                
+                .system:before {
+                    content: "系统";
+                    position: absolute;
+                    top: -10px;
+                    left: 12px;
+                    background: #0ea5e9;
+                    color: white;
+                    font-size: 12px;
+                    padding: 2px 8px;
+                    border-radius: 10px;
+                }
+
                 pre {
                     background-color: #f8f9fa;
                     padding: 12px;
@@ -292,7 +312,7 @@ class HtmlGenerator:
             
         message_html = f'<div class="message {role}">'
 
-        if role == "user":
+        if role == "user" or role == "system":
             # 用户消息直接展示
             message_html += self._process_content(content)
         else:

@@ -1,12 +1,5 @@
-import json
-import os
-import asyncio
 from datetime import datetime
-import html
-import re
-import webbrowser
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+import json
 from .html_generator import HtmlGenerator
 
 import httpx
@@ -30,7 +23,8 @@ class ChatLoggerTransport(httpx.AsyncBaseTransport, HtmlGenerator):
         """
         HtmlGenerator.__init__(self, output_dir=output_dir)
         self.wrapped_transport = wrapped_transport
-
+        self.html_file = self.create_html_file()
+        self._processed_message_count = 0
 
     async def handle_async_request(self, request):
         """处理异步请求，拦截 chat/completions 请求"""
@@ -44,53 +38,67 @@ class ChatLoggerTransport(httpx.AsyncBaseTransport, HtmlGenerator):
                 # 解析请求体
                 request_body = json.loads(request.content.decode('utf-8'))
                 messages = request_body.get("messages", [])
-
-                # 记录用户消息
-                if messages and messages[-1]["role"] == "user":
-                    self.conversation.append({"role": "user", "content": messages[-1]["content"]})
+                
+                # 添加未处理的新消息
+                for i in range(self._processed_message_count, len(messages)):
+                    message = messages[i]
+                    role = message["role"]
+                    content = message["content"]
+                    self.append_message(role, content)
+                    # 更新计数器
+                    self._processed_message_count += 1
 
                 # 解析响应体
                 response_body = json.loads(await response.aread())
-
+                
                 # 记录助手回复
                 if response_body.get("choices") and len(response_body["choices"]) > 0:
                     choice = response_body["choices"][0]
                     message = choice.get("message", {})
-
+                    
                     assistant_message = {
-                        "role": "assistant",
-                        "content": message.get("content", ""),
-                        "tool_calls": message.get("tool_calls", [])
+                        "response": message.get("content", ""),
+                        "tool_calls": self._format_tool_calls(message.get("tool_calls", [])),
                     }
 
-                    self.conversation.append(assistant_message)
+                    self.append_message("assistant", assistant_message)
+                    # 更新计数器
+                    self._processed_message_count += 1
 
-                    # 导出对话为HTML
-                    self._export_to_html()
+                    self.close_html_file()
             except Exception as e:
                 print(f"日志记录器出错: {e}")
 
         return response
 
+    def _format_tool_calls(self, tool_calls: list) -> list:
+        """格式化工具调用信息"""
+        result = []
+        for tool_call in tool_calls:
+            result.append({
+                'function_name': tool_call['function']['name'],
+                'function_args': json.loads(tool_call['function']['arguments'])
+            })
+        return result
+    
 
-    def _export_to_html(self) -> None:
-        """导出对话历史到 HTML 文件"""
-        if not self.html_file:
-            self.html_file = self.create_html_file()
+# 创建一个装饰器函数
+def with_html_logger(func):
+    import functools
+    import inspect
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        if inspect.iscoroutinefunction(func):
+            async def async_wrapper():
+                client = await func(*args, **kwargs)
+                return OpenAIChatLogger(output_dir="logs").patch_client(client)
 
-        # 先清空文件内容
-        with open(self.html_file, "w", encoding="utf-8") as f:
-            f.write("")
+            return async_wrapper()
+        else:
+            client = func(*args, **kwargs)
+            return OpenAIChatLogger(output_dir="logs").patch_client(client)
 
-        # 重新创建基本框架
-        self.html_file = self.create_html_file()
-
-        # 添加所有对话内容
-        for message in self.conversation:
-            self.append_message(message["role"], message["content"])
-
-        # 关闭文件
-        self.close_html_file()
+    return wrapper
 
 
 class OpenAIChatLogger:
