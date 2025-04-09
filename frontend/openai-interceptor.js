@@ -177,6 +177,25 @@ class OpenAIInterceptor {
           overflow: auto;
           margin: 12px 0;
       }
+      /* tool 样式 */
+      .tool {
+          background-color: #f3f4f6;
+          margin: 20px 0;
+          border: 1px solid #d1d5db;
+          position: relative;
+      }
+      
+      .tool:before {
+          content: "Tool";
+          position: absolute;
+          top: -10px;
+          left: 12px;
+          background: #6366f1;
+          color: white;
+          font-size: 12px;
+          padding: 2px 8px;
+          border-radius: 10px;
+      }
     `;
     
     this.additionalStyles = `
@@ -227,79 +246,59 @@ class OpenAIInterceptor {
       }
     `;
     
-    this.setupInterceptors();
-    
     // 创建一个初始HTML文件
     this.createHtmlFile();
   }
 
-  setupInterceptors() {
-    // 拦截 chat.completions.create 方法
-    const originalCreate = this.originalInstance.chat.completions.create;
-    this.originalInstance.chat.completions.create = async (...args) => {
-      const startTime = new Date();
-      
-      try {
-        // 保存请求数据
-        const request = args[0];
-        
-        // 记录用户消息 (在调用API之前)
-        this.processUserMessages(request.messages);
-        
-        // 调用原始方法
-        const response = await originalCreate.apply(this.originalInstance.chat.completions, args);
-        
-        // 记录AI响应
-        this.processAIResponse(response);
-        
-        return response;
-      } catch (error) {
-        // 记录错误
-        this.logError(error.toString());
-        
-        throw error;
-      }
-    };
-  }
 
   // 处理用户消息并添加到HTML
   processUserMessages(messages) {
     if (!messages || !Array.isArray(messages)) return;
     
-    // 仅处理新消息
-    for (let i = this.processedMessageCount; i < messages.length; i++) {
-      const message = messages[i];
-      
-      try {
-        // 检查content是否为数组
-        if (Array.isArray(message.content)) {
-          // 处理多部分内容
-          const processedParts = message.content.map(part => {
-            try {
-              switch (part.type) {
-                case 'image_url':
-                  return this.processImageContent(part.image_url);
-                case 'text':
-                  return this.processTextContent(String(part.text || ''));
-                default:
-                  return this.processContent(JSON.stringify(part));
-              }
-            } catch (err) {
-              console.warn('处理消息部分时出错:', err);
-              return '';
-            }
-          }).filter(Boolean); // 移除空值
-          
-          this.appendMessageToHtml(message.role, processedParts.join('\n'));
-        } else {
-          // 处理普通文本内容
-          this.appendMessageToHtml(message.role, this.processTextContent(String(message.content || '')));
-        }
+    try {
+      // 仅处理新消息
+      for (let i = this.processedMessageCount; i < messages.length; i++) {
+        const message = messages[i];
         
-        this.processedMessageCount++;
-      } catch (err) {
-        console.error('处理消息时出错:', err);
+        try {
+          // 检查content是否为数组
+          if (Array.isArray(message.content)) {
+            // 处理多部分内容，确保每个部分的处理错误不会影响其他部分
+            const processedParts = message.content.map(part => {
+              try {
+                switch (part.type) {
+                  case 'image_url':
+                    return this.processImageContent(part.image_url);
+                  case 'text':
+                    return this.processTextContent(String(part.text || ''));
+                  default:
+                    return this.processContent(JSON.stringify(part));
+                }
+              } catch (err) {
+                console.warn(`处理消息部分时出错 (type: ${part.type}):`, err);
+                // 返回原始内容的字符串形式
+                return JSON.stringify(part);
+              }
+            }).filter(Boolean);
+            
+            this.appendMessageToHtml(message.role, processedParts.join('\n'));
+          } else {
+            // 处理普通文本内容
+            this.appendMessageToHtml(
+              message.role, 
+              this.processTextContent(String(message.content || ''))
+            );
+          }
+          
+          this.processedMessageCount++;
+        } catch (err) {
+          console.warn('处理单条消息时出错:', err);
+          // 继续处理下一条消息
+        }
       }
+    } catch (err) {
+      console.error('处理消息列表时出错:', err);
+      // 不抛出错误，确保不影响原始功能
     }
   }
 
@@ -505,48 +504,36 @@ class OpenAIInterceptor {
 
   // 保存HTML到文件
   saveHtmlToFile(isComplete = false) {
-    // 在Node.js环境中
-    if (typeof process !== 'undefined' && process.versions && process.versions.node) {
-      try {
-        const fs = require('fs');
-        const path = require('path');
-        
-        // 创建logs目录（如果不存在）
-        const logsDir = path.join(process.cwd(), 'logs');
-        if (!fs.existsSync(logsDir)) {
-          fs.mkdirSync(logsDir, { recursive: true });
+    try {
+      // 在Node.js环境中
+      if (typeof process !== 'undefined' && process.versions && process.versions.node) {
+        try {
+          const fs = require('fs');
+          const path = require('path');
+          
+          // 创建logs目录（如果不存在）
+          const logsDir = path.join(process.cwd(), 'logs');
+          if (!fs.existsSync(logsDir)) {
+            fs.mkdirSync(logsDir, { recursive: true });
+          }
+          
+          // 构建完整的文件路径
+          const filePath = path.join(logsDir, this.htmlFilename);
+          
+          // 写入文件
+          fs.writeFileSync(filePath, this.htmlContent, 'utf8');
+          
+          if (isComplete) {
+            console.log(`HTML文件已保存: ${filePath}`);
+          }
+        } catch (error) {
+          console.warn('保存HTML文件失败:', error);
+          // 不抛出错误，确保不影响原始功能
         }
-        
-        // 构建完整的文件路径
-        const filePath = path.join(logsDir, this.htmlFilename);
-        
-        // 写入文件
-        fs.writeFileSync(filePath, this.htmlContent, 'utf8');
-        
-        // 仅在完成时打印日志
-        if (isComplete) {
-          console.log(`HTML文件已保存: ${filePath}`);
-        }
-      } catch (error) {
-        console.error('保存HTML文件失败:', error);
       }
-    }
-    // 在浏览器环境中
-    else if (typeof window !== 'undefined') {
-      // 仅在对话完成时下载文件
-      if (isComplete) {
-        const blob = new Blob([this.htmlContent], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = this.htmlFilename;
-        a.click();
-        
-        URL.revokeObjectURL(url);
-        
-        console.log(`HTML文件已保存: ${this.htmlFilename}`);
-      }
+    } catch (error) {
+      console.warn('保存文件过程出错:', error);
+      // 不抛出错误，确保不影响原始功能
     }
   }
 
@@ -665,90 +652,66 @@ export function createInterceptedOpenAI(OpenAIClass, config) {
   
   // 拦截 chat.completions.create 方法
   originalInstance.chat.completions.create = async function(...args) {
-    // 确保请求参数是有效的
-    const request = args[0];
-    if (!request || !request.messages) {
-      throw new Error('Invalid request: messages array is required');
-    }
-
-    // 验证并清理消息内容
-    request.messages = request.messages.map(msg => {
-      // 确保消息格式正确
-      if (!msg.role || !msg.content) {
-        throw new Error('Invalid message format: role and content are required');
-      }
-
-      // 如果content是数组，确保每个元素都是有效的
-      if (Array.isArray(msg.content)) {
-        return {
-          role: msg.role,
-          content: msg.content.map(part => {
-            if (part.type === 'text') {
-              return {
-                type: 'text',
-                text: String(part.text || '') // 确保text是字符串
-              };
-            }
-            if (part.type === 'image_url') {
-              return {
-                type: 'image_url',
-                image_url: {
-                  url: String(part.image_url?.url || ''),
-                  detail: part.image_url?.detail || 'auto'
-                }
-              };
-            }
-            // 如果是未知类型，转换为text类型
-            return {
-              type: 'text',
-              text: JSON.stringify(part)
-            };
-          })
-        };
-      }
-
-      // 如果content是字符串，确保它是有效的
-      return {
-        role: msg.role,
-        content: String(msg.content || '')
-      };
-    });
-
-    // 创建拦截器实例（如果还没有）
-    if (!originalInstance._interceptor) {
-      originalInstance._interceptor = new OpenAIInterceptor(originalInstance);
-    }
-    
-    const interceptor = originalInstance._interceptor;
-    const startTime = new Date();
+    // 保存原始请求参数
+    const originalRequest = args[0];
     
     try {
-      // 记录用户消息 (在调用API之前)
-      interceptor.processUserMessages(request.messages);
+      // 创建拦截器实例（如果还没有）
+      if (!originalInstance._interceptor) {
+        originalInstance._interceptor = new OpenAIInterceptor(originalInstance);
+      }
       
-      // 调用原始方法
-      const response = await originalCreate(request);
+      const interceptor = originalInstance._interceptor;
       
-      // 记录AI响应
-      interceptor.processAIResponse(response);
+      // 尝试记录用户消息，但不影响原始请求
+      try {
+        interceptor.processUserMessages(originalRequest.messages);
+      } catch (loggingError) {
+        console.warn('记录用户消息时出错:', loggingError);
+        // 继续执行，不影响原始请求
+      }
+      
+      // 调用原始方法，使用原始参数
+      const response = await originalCreate(originalRequest);
+      
+      // 尝试记录AI响应，但不影响响应返回
+      try {
+        interceptor.processAIResponse(response);
+      } catch (loggingError) {
+        console.warn('记录AI响应时出错:', loggingError);
+        // 继续执行，不影响响应返回
+      }
       
       return response;
     } catch (error) {
-      // 记录错误
-      interceptor.logError(error.toString());
+      // 如果是API调用错误，尝试记录错误但不影响错误传播
+      try {
+        if (originalInstance._interceptor) {
+          originalInstance._interceptor.logError(error.toString());
+        }
+      } catch (loggingError) {
+        console.warn('记录错误信息时出错:', loggingError);
+      }
       
+      // 抛出原始错误
       throw error;
     }
   };
   
-  // 添加拦截器访问器
+  // 添加拦截器访问器，确保不影响原始实例的其他功能
   return new Proxy(originalInstance, {
     get(target, prop) {
+      // 只处理 interceptor 属性，其他属性保持原样
       if (prop === 'interceptor') {
-        if (!target._interceptor) {
-          target._interceptor = new OpenAIInterceptor(target);
+        try {
+          if (!target._interceptor) {
+            target._interceptor = new OpenAIInterceptor(target);
+          }
+          return target._interceptor;
+        } catch (error) {
+          console.warn('创建拦截器实例时出错:', error);
+          return null;
         }
-        return target._interceptor;
       }
       return target[prop];
     }

@@ -200,6 +200,26 @@ class HtmlGenerator:
                     overflow: auto;
                     margin: 12px 0;
                 }
+
+                /* 添加 tool 消息的样式 */
+                .tool {
+                    background-color: #f3f4f6;
+                    margin: 20px 0;
+                    border: 1px solid #d1d5db;
+                    position: relative;
+                }
+                
+                .tool:before {
+                    content: "Tool";
+                    position: absolute;
+                    top: -10px;
+                    left: 12px;
+                    background: #6366f1;
+                    color: white;
+                    font-size: 12px;
+                    padding: 2px 8px;
+                    border-radius: 10px;
+                }
             </style>
             <!-- 引入代码高亮库 -->
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
@@ -226,12 +246,30 @@ class HtmlGenerator:
         return html.escape(str(text))
 
     def _process_content(self, content: str) -> str:
-        """处理内容中的Markdown、代码和图片"""
-        processed = self._escape_html(content)
-        processed = self._detect_code_blocks(processed)
-        processed = self._detect_images(processed)
-        processed = self._detect_inline_code(processed)
-        return processed
+        """处理内容中的代码和图片"""
+        try:
+            if not content:
+                return ''
+            
+            # 如果内容是对象，转换为字符串
+            if isinstance(content, (dict, list)):
+                content = json.dumps(content, indent=2, ensure_ascii=False)
+            
+            # 检测是否包含HTML结构
+            if re.search(r'<[a-z][\s\S]*>', content, re.I):
+                # 将HTML内容直接作为代码块展示，不做复杂处理
+                return f'<pre><code class="language-html">{html.escape(content)}</code></pre>'
+            
+            # 处理其他内容（保持原有逻辑）
+            content = self._detect_code_blocks(content)
+            content = self._detect_inline_code(content)
+            content = self._detect_images(content)
+            
+            return content
+        except Exception as e:
+            print(f"处理内容时出错: {e}")
+            # 返回转义后的原始内容
+            return html.escape(str(content))
 
     def _detect_code_blocks(self, text: str) -> str:
         """检测并高亮代码块"""
