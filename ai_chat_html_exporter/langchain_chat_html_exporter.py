@@ -61,11 +61,22 @@ class HtmlExportCallbackHandler(StdOutCallbackHandler, HtmlGenerator):
             self.previous_messages_count = len(current_messages)
             self.is_first_conversation = False
             for message in current_messages:
-                self.append_message(_convert_message_role(message.type), message.content)
+                self._append_message(message)
         else:
-            last_message = current_messages[-1]
-            self.append_message(_convert_message_role(last_message.type), last_message.content)
-            self.previous_messages_count = self.previous_messages_count + 1
+            last_messages = current_messages[(self.previous_messages_count - len(current_messages)):]
+            for message in last_messages:
+                self._append_message(message)
+            self.previous_messages_count = self.previous_messages_count + len(last_messages)
+
+    def _append_message(self, message):
+        if message.type == 'ai' and message.tool_calls:
+            assistant_message = {
+                "response": message.content,
+                "tool_calls": self._format_tool_calls(message.tool_calls)
+            }
+            self.append_message("assistant", assistant_message)
+        else:
+            self.append_message(_convert_message_role(message.type), message.content)
 
     def _is_new_conversation(self, messages: list[BaseMessage]) -> bool:
         """检查是否是新的对话轮次
@@ -74,10 +85,9 @@ class HtmlExportCallbackHandler(StdOutCallbackHandler, HtmlGenerator):
         消息数量为1且是用户消息，则判断为新对话
         """
         # 如果当前消息数量少于之前记录的数量，可能是新会话
-        if len(messages) != self.previous_messages_count + 1:
+        if len(messages) < self.previous_messages_count + 1:
             return True
 
-        # 如果只有一条用户消息，可能是新会话开始
         if self.previous_messages_count == 0:
             return True
 
@@ -85,12 +95,11 @@ class HtmlExportCallbackHandler(StdOutCallbackHandler, HtmlGenerator):
 
     def on_llm_end(self, response: Any, **kwargs: Any) -> None:
         """当 LLM 结束处理时调用"""
-        assistant_message = {
-            "response": response.generations[0][0].text,
-            "tool_calls": self._format_tool_calls(
-                response.generations[0][0].message.additional_kwargs.get('tool_calls', []))
-        }
-        self.append_message("assistant", assistant_message)
+        assistant_message = response.generations[0][0].message
+        self.append_message("assistant", {
+            "response": assistant_message.content,
+            "tool_calls": self._format_tool_calls(assistant_message.tool_calls)
+        })
         self.previous_messages_count = self.previous_messages_count + 1
 
     def on_tool_end(
@@ -113,8 +122,8 @@ class HtmlExportCallbackHandler(StdOutCallbackHandler, HtmlGenerator):
         result = []
         for tool_call in tool_calls:
             result.append({
-                'function_name': tool_call['function']['name'],
-                'function_args': json.loads(tool_call['function']['arguments'])
+                'function_name': tool_call['name'],
+                'function_args': tool_call['args']
             })
         return result
 
