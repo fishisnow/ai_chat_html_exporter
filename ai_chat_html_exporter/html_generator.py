@@ -245,17 +245,50 @@ class HtmlGenerator:
         """转义 HTML 特殊字符"""
         return html.escape(str(text))
 
-    def _process_content(self, content: str) -> str:
+    def _process_content(self, content: Any) -> str:
         """处理内容中的代码和图片"""
         try:
             if not content:
                 return ''
-
-            processed = self._escape_html(content)
-            processed = self._detect_code_blocks(processed)
-            processed = self._detect_images(processed)
-            processed = self._detect_inline_code(processed)
-            return processed
+            
+            # 处理多模态内容（列表形式）
+            if isinstance(content, list):
+                processed_parts = []
+                for part in content:
+                    if isinstance(part, dict):
+                        # 处理图片
+                        if part.get('type') == 'image_url':
+                            image_url = part.get('image_url', {}).get('url', '')
+                            if image_url:
+                                # 使用统一的图片处理格式
+                                processed_parts.append(f'<div class="image-container"><img src="{image_url}" alt="图片"></div>')
+                        # 处理文本
+                        elif part.get('type') == 'text':
+                            text = part.get('text', '')
+                            processed_text = self._escape_html(text)
+                            processed_text = self._detect_code_blocks(processed_text)
+                            processed_text = self._detect_inline_code(processed_text)
+                            processed_parts.append(processed_text)
+                        else:
+                            # 处理其他类型
+                            processed_parts.append(self._escape_html(str(part)))
+                return '\n'.join(processed_parts)
+            
+            # 处理字符串内容
+            elif isinstance(content, str):
+                processed = self._escape_html(content)
+                processed = self._detect_code_blocks(processed)
+                # 对于普通字符串，保留图片检测，因为可能包含图片链接
+                processed = self._detect_images(processed)
+                processed = self._detect_inline_code(processed)
+                return processed
+            
+            # 处理其他类型（字典等）
+            else:
+                # 转为 JSON 字符串
+                content_str = json.dumps(content, ensure_ascii=False, indent=2)
+                return f'<pre><code>{self._escape_html(content_str)}</code></pre>'
+            
         except Exception as e:
             print(f"处理内容时出错: {e}")
             # 返回转义后的原始内容

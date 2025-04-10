@@ -93,6 +93,17 @@ class HtmlExportCallbackHandler(StdOutCallbackHandler, HtmlGenerator):
         self.append_message("assistant", assistant_message)
         self.previous_messages_count = self.previous_messages_count + 1
 
+    def on_tool_end(
+            self,
+            output: Any,
+            color: Optional[str] = None,
+            observation_prefix: Optional[str] = None,
+            llm_prefix: Optional[str] = None,
+            **kwargs: Any,
+    ) -> None:
+        # todo complete tool call output message
+        print(output)
+
     def on_chain_end(self, outputs: Any, **kwargs: Any) -> None:
         """当链式处理结束时调用"""
         self.close_html_file()
