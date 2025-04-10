@@ -1,5 +1,5 @@
 // OpenAI 拦截器，用于捕获对话记录并自动导出为HTML
-class OpenAIInterceptor {
+class OpenaiChatHtmlExporter {
   constructor(originalInstance) {
     this.originalInstance = originalInstance;
     this.conversations = [];
@@ -644,7 +644,7 @@ class OpenAIInterceptor {
 }
 
 // 创建带拦截器的OpenAI客户端
-export function createInterceptedOpenAI(OpenAIClass, config) {
+export function createChatExporterOpenAI(OpenAIClass, config) {
   const originalInstance = new OpenAIClass(config);
   
   // 存储原始的 chat.completions.create 方法
@@ -658,7 +658,7 @@ export function createInterceptedOpenAI(OpenAIClass, config) {
     try {
       // 创建拦截器实例（如果还没有）
       if (!originalInstance._interceptor) {
-        originalInstance._interceptor = new OpenAIInterceptor(originalInstance);
+        originalInstance._interceptor = new OpenaiChatHtmlExporter(originalInstance);
       }
       
       const interceptor = originalInstance._interceptor;
@@ -705,7 +705,7 @@ export function createInterceptedOpenAI(OpenAIClass, config) {
       if (prop === 'interceptor') {
         try {
           if (!target._interceptor) {
-            target._interceptor = new OpenAIInterceptor(target);
+            target._interceptor = new OpenaiChatHtmlExporter(target);
           }
           return target._interceptor;
         } catch (error) {

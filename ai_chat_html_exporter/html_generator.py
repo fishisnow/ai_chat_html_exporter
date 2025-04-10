@@ -250,22 +250,12 @@ class HtmlGenerator:
         try:
             if not content:
                 return ''
-            
-            # 如果内容是对象，转换为字符串
-            if isinstance(content, (dict, list)):
-                content = json.dumps(content, indent=2, ensure_ascii=False)
-            
-            # 检测是否包含HTML结构
-            if re.search(r'<[a-z][\s\S]*>', content, re.I):
-                # 将HTML内容直接作为代码块展示，不做复杂处理
-                return f'<pre><code class="language-html">{html.escape(content)}</code></pre>'
-            
-            # 处理其他内容（保持原有逻辑）
-            content = self._detect_code_blocks(content)
-            content = self._detect_inline_code(content)
-            content = self._detect_images(content)
-            
-            return content
+
+            processed = self._escape_html(content)
+            processed = self._detect_code_blocks(processed)
+            processed = self._detect_images(processed)
+            processed = self._detect_inline_code(processed)
+            return processed
         except Exception as e:
             print(f"处理内容时出错: {e}")
             # 返回转义后的原始内容
@@ -405,3 +395,21 @@ class HtmlGenerator:
         
         # 关闭文件
         self.close_html_file() 
+
+    def append_divider(self, title: str = ""):
+        """添加分隔线到对话中
+        
+        Args:
+            title: 分隔线标题
+        """
+        if self.html_file:
+            divider_html = f"""
+            <div class="conversation-divider" style="text-align: center; margin: 20px 0; color: #6b7280; font-size: 14px;">
+                <span style="display: inline-block; position: relative; padding: 0 10px; background: #f7f7f8;">
+                    <span style="border-top: 1px solid #d1d5db; position: absolute; top: 50%; left: 0; width: 100%; z-index: -1;"></span>
+                    {html.escape(title)}
+                </span>
+            </div>
+            """
+            with open(self.html_file, "a", encoding="utf-8") as f:
+                f.write(divider_html)
