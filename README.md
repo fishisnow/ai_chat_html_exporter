@@ -58,6 +58,20 @@ llm = AzureChatOpenAI(
 # 对话内容会自动保存到 logs 目录下的精美 HTML 文件中
 ```
 
+```javascript
+import { createChatExporterOpenAI } from './frontend/openai-chat-html-exporter.js';
+import OpenAI from 'openai';
+
+// 配置 OpenAI 客户端
+const openaiConfig = {
+  apiKey: 'your-api-key',
+  baseUrl: 'https://api.openai.com/v1',
+};
+
+// 创建带拦截器的 OpenAI 客户端, nodejs 环境测试的时候会自动生成 html 文件
+const openaiClient = createChatExporterOpenAI(OpenAI, openaiConfig);
+```
+
 ### OpenAI API 集成示例
 ```python
 from ai_chat_html_exporter.openai_chat_html_exporter import with_html_logger
