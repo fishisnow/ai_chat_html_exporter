@@ -60,7 +60,9 @@ llm = AzureChatOpenAI(
 ```
 
 ```javascript
-import { createChatExporterOpenAI } from './frontend/openai-chat-html-exporter.js';
+<script src="https://cdn.jsdelivr.net/gh/fishisnow/ai_chat_html_exporter@main/frontend/openai-chat-html-exporter.js"></script>
+
+// your script
 import OpenAI from 'openai';
 
 // configure OpenAI client
