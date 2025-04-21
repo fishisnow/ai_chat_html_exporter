@@ -10,7 +10,7 @@ A professional AI conversation history export tool that intelligently converts y
 ![Version](https://img.shields.io/badge/Version-1.0.0-blue)
 ![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen)
 ![License](https://img.shields.io/badge/License-MIT-green)
-![Python](https://img.shields.io/badge/Python-3.10+-yellow)
+![Python](https://img.shields.io/badge/Python-3.12+-yellow)
 
 ## ✨ Key Features
 
@@ -98,7 +98,7 @@ exporter = HtmlExportCallbackHandler(output_dir="my_chat_logs")
 
 ## 📦 System Requirements
 
-- Python >= 3.10
+- Python >= 3.12
 - langchain-core >= 0.1.0
 - python-dotenv >= 1.0.0
 - openai >= 1.6.1

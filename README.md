@@ -9,7 +9,7 @@
 ![版本](https://img.shields.io/badge/版本-1.0.0-blue)
 ![构建状态](https://img.shields.io/badge/构建-通过-brightgreen)
 ![许可证](https://img.shields.io/badge/许可证-MIT-green)
-![Python](https://img.shields.io/badge/Python-3.10+-yellow)
+![Python](https://img.shields.io/badge/Python-3.12+-yellow)
 
 ## ✨ 核心亮点
 
@@ -100,7 +100,7 @@ exporter = HtmlExportCallbackHandler(output_dir="my_chat_logs")
 
 ## 📦 系统要求
 
-- Python >= 3.10
+- Python >= 3.12
 - langchain-core >= 0.1.0
 - python-dotenv >= 1.0.0
 - openai >= 1.6.1
