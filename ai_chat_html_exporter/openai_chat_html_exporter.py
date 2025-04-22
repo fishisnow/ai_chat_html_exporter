@@ -24,6 +24,9 @@ class LoggerTransport(HtmlGenerator):
         self.wrapped_transport = wrapped_transport
         self.html_file = self.create_html_file()
         self._processed_message_count = 0
+        self._previous_messages_count = 0  # 记录上一次对话的消息数量
+        self._is_first_conversation = True  # 是否是第一次对话
+        self._step = 0  # 记录对话步骤
 
     def _process_request(self, request_content, response_body):
         """处理请求和响应内容"""
@@ -32,6 +35,22 @@ class LoggerTransport(HtmlGenerator):
             request_body = json.loads(request_content.decode('utf-8'))
             messages = request_body.get("messages", [])
             tools = request_body.get("tools", [])
+            
+            # 判断是否是新对话
+            is_new_conversation = self._is_new_conversation(messages)
+            
+            # 如果是新的对话但不是第一次对话，添加分隔线
+            if is_new_conversation and not self._is_first_conversation:
+                self._step += 1
+                self.append_divider(f"————————————Step {self._step}————————————")
+                self._processed_message_count = 0  # 重置消息计数器
+            
+            if is_new_conversation:
+                self._previous_messages_count = len(messages)
+                self._is_first_conversation = False
+            else:
+                # 更新最近一次消息数量
+                self._previous_messages_count = max(self._previous_messages_count, len(messages))
             
             # 添加未处理的新消息
             for i in range(self._processed_message_count, len(messages)):
@@ -70,6 +89,16 @@ class LoggerTransport(HtmlGenerator):
                 self.close_html_file()
         except Exception as e:
             print(f"日志记录器出错: {e}")
+
+    def _is_new_conversation(self, messages: list) -> bool:
+        if self._previous_messages_count == 0:
+            return True
+            
+        # 如果消息数量不符合递增规律，可能是新会话
+        if len(messages) < self._previous_messages_count + 1:
+            return True
+
+        return False
 
     def _format_tool_calls(self, tool_calls: list) -> list:
         """格式化工具调用信息"""

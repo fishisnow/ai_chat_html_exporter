@@ -385,51 +385,50 @@ class HtmlGenerator:
                     popupContainer.classList.remove('tools-popup-visible');
                 });
                 
-                // 添加点击事件委托到父元素
-                document.getElementById('conversation').addEventListener('click', function(e) {
-                    // 检查是否点击了工具图标
-                    if (e.target.classList.contains('tools-icon') || e.target.closest('.tools-icon')) {
-                        const icon = e.target.closest('.tools-icon');
-                        const message = icon.closest('.message');
-                        const toolsData = message.querySelector('.tools-data');
-                        
-                        if (toolsData) {
-                            // 获取工具数据
-                            const toolsJson = toolsData.getAttribute('data-tools');
-                            
-                            // 填充弹出层内容
-                            const codeElement = popupContainer.querySelector('code');
-                            codeElement.textContent = toolsJson;
-                            
-                            // 应用语法高亮
-                            if (window.hljs) {
-                                hljs.highlightElement(codeElement);
-                            }
-                            
-                            // 定位弹出层
-                            const iconRect = icon.getBoundingClientRect();
-                            popupContainer.style.top = `${iconRect.bottom + 5}px`;
-                            popupContainer.style.right = `${window.innerWidth - iconRect.right}px`;
-                            
-                            // 显示弹出层
-                            popupContainer.classList.add('tools-popup-visible');
-                            
-                            // 调整位置
-                            adjustPopupPosition(popupContainer);
-                        }
-                    }
-                });
-                
-                // 初始化时检查所有用户消息内容高度
-                setTimeout(() => {
-                    document.querySelectorAll('.message.user').forEach(message => {
-                        // 移除空格、换行符等空白字符，检查消息是否为空
-                        const text = message.textContent.trim();
-                        if (!text || text.length === 0) {
-                            message.style.padding = '5px 20px';
+                // 初始化所有工具图标的点击事件
+                function initToolsIcons() {
+                    document.querySelectorAll('.tools-icon').forEach(icon => {
+                        if (!icon.dataset.initialized) {
+                            icon.dataset.initialized = 'true';
+                            icon.addEventListener('click', handleToolIconClick);
                         }
                     });
-                }, 100);
+                }
+                
+                // 工具图标点击处理函数
+                function handleToolIconClick(e) {
+                    const icon = e.currentTarget;
+                    const message = icon.closest('.message');
+                    const toolsData = message.querySelector('.tools-data');
+                    
+                    if (toolsData) {
+                        // 获取工具数据
+                        const toolsJson = toolsData.getAttribute('data-tools');
+                        
+                        // 填充弹出层内容
+                        const codeElement = popupContainer.querySelector('code');
+                        codeElement.textContent = toolsJson;
+                        
+                        // 应用语法高亮
+                        if (window.hljs) {
+                            hljs.highlightElement(codeElement);
+                        }
+                        
+                        // 定位弹出层
+                        const iconRect = icon.getBoundingClientRect();
+                        popupContainer.style.top = `${iconRect.bottom + 5}px`;
+                        popupContainer.style.right = `${window.innerWidth - iconRect.right}px`;
+                        
+                        // 显示弹出层
+                        popupContainer.classList.add('tools-popup-visible');
+                        
+                        // 调整位置
+                        adjustPopupPosition(popupContainer);
+                        
+                        // 阻止事件冒泡
+                        e.stopPropagation();
+                    }
+                }
                 
                 // 调整弹出框位置，确保在视窗内
                 function adjustPopupPosition(popup) {
@@ -474,6 +473,47 @@ class HtmlGenerator:
                         adjustPopupPosition(popupContainer);
                     }
                 });
+                
+                // 初始化现有图标
+                initToolsIcons();
+                
+                // 使用MutationObserver监听DOM变化，处理动态添加的工具图标
+                const observer = new MutationObserver(function(mutations) {
+                    let hasNewIcons = false;
+                    
+                    mutations.forEach(function(mutation) {
+                        if (mutation.type === 'childList') {
+                            const icons = mutation.target.querySelectorAll('.tools-icon:not([data-initialized])');
+                            if (icons.length > 0) {
+                                hasNewIcons = true;
+                            }
+                        }
+                    });
+                    
+                    if (hasNewIcons) {
+                        initToolsIcons();
+                    }
+                });
+                
+                // 开始观察DOM变化
+                observer.observe(document.getElementById('conversation'), { 
+                    childList: true, 
+                    subtree: true 
+                });
+                
+                // 初始化时检查所有用户消息内容高度
+                setTimeout(() => {
+                    document.querySelectorAll('.message.user').forEach(message => {
+                        // 移除空格、换行符等空白字符，检查消息是否为空
+                        const text = message.textContent.trim();
+                        if (!text || text.length === 0) {
+                            message.style.padding = '5px 20px';
+                        }
+                    });
+                    
+                    // 确保所有图标都已初始化
+                    initToolsIcons();
+                }, 100);
             });
             </script>
         </head>
