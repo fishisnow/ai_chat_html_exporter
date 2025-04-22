@@ -31,13 +31,25 @@ class LoggerTransport(HtmlGenerator):
             # 解析请求体
             request_body = json.loads(request_content.decode('utf-8'))
             messages = request_body.get("messages", [])
+            tools = request_body.get("tools", [])
             
             # 添加未处理的新消息
             for i in range(self._processed_message_count, len(messages)):
                 message = messages[i]
                 role = message["role"]
                 content = message["content"]
-                self.append_message(role, content)
+                
+                # 如果是最后一条用户消息并且存在tools字段，添加tools信息
+                if role == "user" and i == len(messages) - 1 and tools:
+                    # 创建包含tools字段的消息内容
+                    enhanced_content = {
+                        "text": content,
+                        "tools": tools
+                    }
+                    self.append_message(role, enhanced_content)
+                else:
+                    self.append_message(role, content)
+                
                 # 更新计数器
                 self._processed_message_count += 1
 

@@ -50,6 +50,8 @@ class HtmlGenerator:
                     line-height: 1.5;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.06);
                     transition: all 0.2s ease;
+                    position: relative;
+                    overflow: visible;
                 }
                 
                 .message:hover {
@@ -71,11 +73,22 @@ class HtmlGenerator:
                 .message > *:last-child {
                     margin-bottom: 0;
                 }
+                
+                #conversation {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    width: 100%;
+                }
+                
                 .user {
                     background-color: #e9f2ff;
                     margin-right: 15%;
                     border: 1px solid #d1e3ff;
                     position: relative;
+                    align-self: flex-start;
+                    max-width: 85%;
+                    padding-right: 40px; /* 为工具图标预留空间 */
                 }
                 
                 .user:before {
@@ -95,6 +108,8 @@ class HtmlGenerator:
                     margin-left: 15%;
                     border: 1px solid #e5e7eb;
                     position: relative;
+                    align-self: flex-end;
+                    max-width: 85%;
                 }
                 
                 .assistant:before {
@@ -220,11 +235,247 @@ class HtmlGenerator:
                     padding: 2px 8px;
                     border-radius: 10px;
                 }
+                
+                /* 用户消息中的工具图标 */
+                .tools-icon {
+                    position: absolute;
+                    top: 10px;
+                    right: 10px;
+                    width: 22px;
+                    height: 22px;
+                    cursor: pointer;
+                    color: #4b7bec;
+                    opacity: 0.7;
+                    transition: all 0.2s ease;
+                    background-color: rgba(255, 255, 255, 0.8);
+                    padding: 3px;
+                    border-radius: 4px;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10;
+                }
+                
+                .tools-icon:hover {
+                    opacity: 1;
+                    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+                    transform: translateY(-1px);
+                }
+                
+                /* 工具信息弹出层 */
+                .tools-popup {
+                    display: none;
+                    position: fixed;
+                    background: white;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 8px;
+                    padding: 10px;
+                    width: 400px;
+                    max-width: 90vw;
+                    max-height: 60vh;
+                    overflow: hidden;
+                    z-index: 100;
+                    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+                }
+                
+                .tools-popup-content {
+                    height: calc(60vh - 60px);
+                    overflow: hidden;
+                }
+                
+                .tools-popup pre {
+                    margin: 0;
+                    white-space: pre-wrap;
+                    padding: 8px;
+                    border-radius: 6px;
+                    background-color: #f8f9fa;
+                    border: 1px solid #f0f0f0;
+                    font-size: 13px;
+                    overflow: auto;
+                    height: 100%;
+                }
+                
+                .tools-popup code {
+                    background: transparent;
+                    padding: 0;
+                    font-size: 13px;
+                }
+                
+                .tools-popup-visible {
+                    display: block;
+                    animation: fadeIn 0.2s ease-out;
+                }
+                
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(-10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                
+                /* 关闭按钮 */
+                .tools-popup-close {
+                    position: absolute;
+                    top: 8px;
+                    right: 10px;
+                    cursor: pointer;
+                    font-size: 18px;
+                    color: #9ca3af;
+                    line-height: 1;
+                    width: 20px;
+                    height: 20px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 50%;
+                }
+                
+                .tools-popup-close:hover {
+                    color: #4b5563;
+                    background-color: #f3f4f6;
+                }
+
+                /* 工具信息标题 */
+                .tools-popup-title {
+                    font-size: 14px;
+                    font-weight: 600;
+                    color: #4b7bec;
+                    margin: 0 0 8px 0;
+                    padding: 0 20px 8px 0;
+                    border-bottom: 1px solid #e5e7eb;
+                    line-height: 1.5;
+                }
+                
+                /* 响应式调整 */
+                @media (max-width: 600px) {
+                    .tools-popup {
+                        width: calc(100vw - 40px);
+                        max-height: 70vh;
+                    }
+                    
+                    .tools-popup pre {
+                        max-height: calc(70vh - 50px);
+                    }
+                }
+
+                /* 消息内容文本 */
+                .content-text {
+                    display: inline;
+                }
             </style>
             <!-- 引入代码高亮库 -->
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
             <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
             <script>hljs.highlightAll();</script>
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // 全局弹出层，只创建一次
+                const popupContainer = document.createElement('div');
+                popupContainer.className = 'tools-popup';
+                popupContainer.innerHTML = `
+                    <span class="tools-popup-close" title="关闭">&times;</span>
+                    <div class="tools-popup-title">可用工具列表</div>
+                    <div class="tools-popup-content">
+                        <pre><code class="language-json"></code></pre>
+                    </div>
+                `;
+                document.body.appendChild(popupContainer);
+                
+                // 关闭按钮事件
+                popupContainer.querySelector('.tools-popup-close').addEventListener('click', function() {
+                    popupContainer.classList.remove('tools-popup-visible');
+                });
+                
+                // 添加点击事件委托到父元素
+                document.getElementById('conversation').addEventListener('click', function(e) {
+                    // 检查是否点击了工具图标
+                    if (e.target.classList.contains('tools-icon') || e.target.closest('.tools-icon')) {
+                        const icon = e.target.closest('.tools-icon');
+                        const message = icon.closest('.message');
+                        const toolsData = message.querySelector('.tools-data');
+                        
+                        if (toolsData) {
+                            // 获取工具数据
+                            const toolsJson = toolsData.getAttribute('data-tools');
+                            
+                            // 填充弹出层内容
+                            const codeElement = popupContainer.querySelector('code');
+                            codeElement.textContent = toolsJson;
+                            
+                            // 应用语法高亮
+                            if (window.hljs) {
+                                hljs.highlightElement(codeElement);
+                            }
+                            
+                            // 定位弹出层
+                            const iconRect = icon.getBoundingClientRect();
+                            popupContainer.style.top = `${iconRect.bottom + 5}px`;
+                            popupContainer.style.right = `${window.innerWidth - iconRect.right}px`;
+                            
+                            // 显示弹出层
+                            popupContainer.classList.add('tools-popup-visible');
+                            
+                            // 调整位置
+                            adjustPopupPosition(popupContainer);
+                        }
+                    }
+                });
+                
+                // 初始化时检查所有用户消息内容高度
+                setTimeout(() => {
+                    document.querySelectorAll('.message.user').forEach(message => {
+                        // 移除空格、换行符等空白字符，检查消息是否为空
+                        const text = message.textContent.trim();
+                        if (!text || text.length === 0) {
+                            message.style.padding = '5px 20px';
+                        }
+                    });
+                }, 100);
+                
+                // 调整弹出框位置，确保在视窗内
+                function adjustPopupPosition(popup) {
+                    const rect = popup.getBoundingClientRect();
+                    const viewportHeight = window.innerHeight;
+                    const viewportWidth = window.innerWidth;
+                    
+                    // 检查是否超出底部边界
+                    if (rect.bottom > viewportHeight) {
+                        // 如果弹出框太大，则将其放到顶部附近
+                        if (rect.height > viewportHeight * 0.6) {
+                            popup.style.top = '20px';
+                        } else {
+                            const overflowBottom = rect.bottom - viewportHeight;
+                            popup.style.top = `${parseInt(popup.style.top || '0') - overflowBottom - 10}px`;
+                        }
+                    }
+                    
+                    // 检查是否超出右侧边界
+                    if (rect.right > viewportWidth) {
+                        popup.style.right = '10px';
+                        popup.style.left = 'auto';
+                    }
+                    
+                    // 检查是否超出左侧边界
+                    if (rect.left < 0) {
+                        popup.style.left = '10px';
+                        popup.style.right = 'auto';
+                    }
+                }
+                
+                // 点击文档其他区域关闭弹出框
+                document.addEventListener('click', function(e) {
+                    if (!e.target.closest('.tools-popup') && !e.target.closest('.tools-icon')) {
+                        popupContainer.classList.remove('tools-popup-visible');
+                    }
+                });
+                
+                // 窗口大小改变时重新调整弹出框的位置
+                window.addEventListener('resize', function() {
+                    if (popupContainer.classList.contains('tools-popup-visible')) {
+                        adjustPopupPosition(popupContainer);
+                    }
+                });
+            });
+            </script>
         </head>
         <body>
             <h1>AI对话历史</h1>
@@ -281,7 +532,12 @@ class HtmlGenerator:
                 # 对于普通字符串，保留图片检测，因为可能包含图片链接
                 processed = self._detect_images(processed)
                 processed = self._detect_inline_code(processed)
-                return processed
+                return f'<span class="content-text">{processed}</span>'
+            
+            # 处理带有text字段的字典内容（用于增强型用户消息）
+            elif isinstance(content, dict) and 'text' in content:
+                text_content = content.get('text', '')
+                return self._process_content(text_content)
             
             # 处理其他类型（字典等）
             else:
@@ -376,6 +632,19 @@ class HtmlGenerator:
         if role == "user" or role == "system":
             # 用户消息直接展示
             message_html += self._process_content(content)
+            
+            # 如果用户消息有tools字段，添加一个图标
+            if isinstance(content, dict) and content.get('tools'):
+                tools_json = json.dumps(content.get('tools'), indent=2, ensure_ascii=False)
+                message_html += f'''
+                <svg class="tools-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" title="查看可用工具">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14 16l3 3 3-3m0 0v-8" />
+                </svg>
+                '''
+                
+                # 将工具数据存储为自定义数据属性，而不是直接在DOM中
+                message_html += f'<div class="tools-data" data-tools="{self._escape_html(tools_json)}" style="display:none;"></div>'
         else:
             # AI 响应消息
             if isinstance(content, dict):
