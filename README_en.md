@@ -59,6 +59,18 @@ llm = AzureChatOpenAI(
 # The conversation logs will be automatically saved as beautifully formatted HTML files in the logs directory
 ```
 
+### OpenAI API Integration Example
+Support AsyncOpenAI, OpenAI, AsyncAzureOpenAI, AzureOpenAI clients.
+
+```python
+from ai_chat_html_exporter.openai_chat_html_exporter import with_html_logger
+from openai import AsyncOpenAI
+
+@with_html_logger  # Just add this decorator
+def get_openai_client(self):
+    return AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
+```
+
 ```javascript
 <script src="https://cdn.jsdelivr.net/gh/fishisnow/ai_chat_html_exporter@main/frontend/openai-chat-html-exporter.js"></script>
 
@@ -73,16 +85,6 @@ const openaiConfig = {
 
 // Create an OpenAI client with an interceptor, and automatically generate html files when testing in the nodejs environment
 const openaiClient = createChatExporterOpenAI(OpenAI, openaiConfig);
-```
-
-### OpenAI API Integration Example
-```python
-from ai_chat_html_exporter.openai_chat_html_exporter import with_html_logger
-from openai import AsyncOpenAI
-
-@with_html_logger  # Just add this decorator
-def get_openai_client(self):
-    return AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
 ```
 
 ## ⚙️ Custom Configuration

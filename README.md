@@ -58,6 +58,18 @@ llm = AzureChatOpenAI(
 # 对话内容会自动保存到 logs 目录下的精美 HTML 文件中
 ```
 
+### OpenAI API 集成示例
+支持 AsyncOpenAI, OpenAI, AsyncAzureOpenAI, AzureOpenAI 客户端
+```python
+from ai_chat_html_exporter.openai_chat_html_exporter import with_html_logger
+from openai import AsyncOpenAI
+
+@with_html_logger  # 只需添加这个装饰器
+def get_openai_client(self):
+    return AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
+```
+
+
 ```javascript
 <script src="https://cdn.jsdelivr.net/gh/fishisnow/ai_chat_html_exporter@main/frontend/openai-chat-html-exporter.js"></script>
 
@@ -72,16 +84,6 @@ const openaiConfig = {
 
 // 创建带拦截器的 OpenAI 客户端, nodejs 环境测试的时候会自动生成 html 文件
 const openaiClient = createChatExporterOpenAI(OpenAI, openaiConfig);
-```
-
-### OpenAI API 集成示例
-```python
-from ai_chat_html_exporter.openai_chat_html_exporter import with_html_logger
-from openai import AsyncOpenAI
-
-@with_html_logger  # 只需添加这个装饰器
-def get_openai_client(self):
-    return AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
 ```
 
 ## ⚙️ 自定义配置
