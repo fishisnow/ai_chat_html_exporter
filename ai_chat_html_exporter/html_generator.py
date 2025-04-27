@@ -31,31 +31,51 @@ class HtmlGenerator:
             <meta charset="UTF-8">
             <title>AI对话历史</title>
             <style>
-                body {
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-                    max-width: 800px;
-                    margin: 0 auto;
-                    padding: 20px;
-                    background-color: #f7f7f8;
-                    line-height: 1.6;
-                    color: #374151;
+                :root {
+                    --color-text: #1a1a1a;
+                    --color-background: #ffffff;
+                    --color-accent: #0070f3;
+                    --color-border: #f0f0f0;
+                    --color-card: #ffffff;
+                    --color-user-bg: #f9fafb;
+                    --color-assistant-bg: #ffffff;
+                    --color-system-bg: #f9f9f9;
+                    --color-code-bg: #f7f7f7;
+                    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
+                    --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.05);
+                    --radius-sm: 6px;
+                    --radius-md: 10px;
+                    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
                 }
+
+                body {
+                    font-family: var(--font-sans);
+                    max-width: 768px;
+                    margin: 0 auto;
+                    padding: 40px 16px;
+                    background-color: var(--color-background);
+                    line-height: 1.6;
+                    color: var(--color-text);
+                    font-size: 15px;
+                }
+                
                 .message {
                     margin: 20px 0;
-                    padding: 16px 20px;
-                    border-radius: 16px;
+                    padding: 16px 18px;
+                    border-radius: var(--radius-md);
                     white-space: pre-wrap;
                     word-wrap: break-word;
                     font-size: 15px;
-                    line-height: 1.5;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+                    line-height: 1.6;
+                    box-shadow: var(--shadow-sm);
                     transition: all 0.2s ease;
                     position: relative;
                     overflow: visible;
+                    border: 1px solid var(--color-border);
                 }
                 
                 .message:hover {
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                    box-shadow: var(--shadow-md);
                 }
                 
                 .message > div {
@@ -82,52 +102,54 @@ class HtmlGenerator:
                 }
                 
                 .user {
-                    background-color: #e9f2ff;
-                    margin-right: 15%;
-                    border: 1px solid #d1e3ff;
-                    position: relative;
+                    background-color: var(--color-user-bg);
+                    margin-right: 10%;
                     align-self: flex-start;
-                    max-width: 85%;
+                    max-width: 90%;
                     padding-right: 40px; /* 为工具图标预留空间 */
                 }
                 
                 .user:before {
                     content: "用户";
                     position: absolute;
-                    top: -10px;
+                    top: -8px;
                     left: 12px;
-                    background: #4b7bec;
-                    color: white;
+                    background: #f2f2f2;
+                    color: #666;
                     font-size: 12px;
-                    padding: 2px 8px;
-                    border-radius: 10px;
+                    padding: 1px 6px;
+                    border-radius: 4px;
+                    font-weight: 500;
+                    box-shadow: var(--shadow-sm);
+                    border: 1px solid var(--color-border);
                 }
                 
                 .assistant {
-                    background-color: #ffffff;
-                    margin-left: 15%;
-                    border: 1px solid #e5e7eb;
+                    background-color: var(--color-assistant-bg);
+                    margin-left: 10%;
                     position: relative;
                     align-self: flex-end;
-                    max-width: 85%;
+                    max-width: 90%;
                 }
                 
                 .assistant:before {
                     content: "AI";
                     position: absolute;
-                    top: -10px;
+                    top: -8px;
                     left: 12px;
-                    background: #45aaf2;
-                    color: white;
+                    background: #e9e9e9;
+                    color: #666;
                     font-size: 12px;
-                    padding: 2px 8px;
-                    border-radius: 10px;
+                    padding: 1px 6px;
+                    border-radius: 4px;
+                    font-weight: 500;
+                    box-shadow: var(--shadow-sm);
+                    border: 1px solid var(--color-border);
                 }
 
                 .system {
-                    background-color: #f0f9ff;
-                    margin: 20px 0;
-                    border: 1px solid #bae6fd;
+                    background-color: var(--color-system-bg);
+                    margin: 16px 0;
                     position: relative;
                     font-style: italic;
                 }
@@ -135,105 +157,127 @@ class HtmlGenerator:
                 .system:before {
                     content: "系统";
                     position: absolute;
-                    top: -10px;
+                    top: -8px;
                     left: 12px;
-                    background: #0ea5e9;
-                    color: white;
+                    background: #ececec;
+                    color: #666;
                     font-size: 12px;
-                    padding: 2px 8px;
-                    border-radius: 10px;
+                    padding: 1px 6px;
+                    border-radius: 4px;
+                    font-weight: 500;
+                    box-shadow: var(--shadow-sm);
+                    border: 1px solid var(--color-border);
                 }
 
                 pre {
-                    background-color: #f8f9fa;
-                    padding: 12px;
-                    border-radius: 8px;
+                    background-color: var(--color-code-bg);
+                    padding: 14px 16px;
+                    border-radius: var(--radius-sm);
                     overflow-x: auto;
-                    margin: 12px 0;
-                    font-family: 'Menlo', 'Consolas', monospace;
-                    font-size: 14px;
-                    line-height: 1.4;
-                    border: 1px solid #e5e7eb;
+                    margin: 14px 0;
+                    font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+                    font-size: 13.5px;
+                    line-height: 1.5;
+                    border: 1px solid var(--color-border);
                 }
+                
                 code {
-                    font-family: 'Menlo', 'Consolas', monospace;
-                    background-color: #f3f4f6;
+                    font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+                    background-color: var(--color-code-bg);
                     padding: 2px 4px;
-                    border-radius: 4px;
-                    font-size: 14px;
+                    border-radius: 3px;
+                    font-size: 13.5px;
+                    color: inherit;
                 }
+                
                 .tool-call-header {
-                    margin: 12px 0 0 0;
+                    margin: 14px 0 0 0;
                     display: flex;
                     align-items: center;
-                    padding: 8px 12px;
-                    background-color: #f1f5f9;
-                    border-radius: 6px 6px 0 0;
+                    padding: 10px 14px;
+                    background-color: var(--color-code-bg);
+                    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
                     font-weight: 500;
-                    color: #334155;
+                    color: var(--color-text);
+                    border: 1px solid var(--color-border);
+                    border-bottom: none;
                 }
                 
                 .tool-call-icon {
-                    width: 16px;
-                    height: 16px;
+                    width: 14px;
+                    height: 14px;
                     margin-right: 8px;
-                    color: #475569;
+                    color: var(--color-text);
+                    opacity: 0.75;
                 }
                 
                 .tool-call-title {
-                    font-size: 0.9em;
-                    font-weight: 600;
+                    font-size: 0.85em;
+                    font-weight: 500;
+                    color: #666;
                 }
 
                 .tool-call-container {
-                    margin: 12px 0;
+                    margin: 14px 0;
+                    border-radius: var(--radius-sm);
+                    overflow: hidden;
+                    box-shadow: var(--shadow-sm);
                 }
                 
                 .tool-call-header + pre {
                     margin-top: 0;
+                    border-top: none;
                     border-top-left-radius: 0;
                     border-top-right-radius: 0;
+                    box-shadow: none;
                 }
 
                 h1 {
-                    color: #111827;
-                    font-size: 1.5em;
-                    font-weight: 600;
-                    margin-bottom: 24px;
+                    font-size: 1.75rem;
+                    font-weight: 700;
+                    margin-bottom: 32px;
                     text-align: center;
+                    letter-spacing: -0.015em;
+                    color: var(--color-text);
                 }
+                
                 /* 图片样式 */
                 img {
                     max-width: 100%;
-                    border-radius: 8px;
-                    margin: 8px 0;
+                    border-radius: var(--radius-sm);
+                    margin: 12px 0;
                     display: block;
+                    border: 1px solid var(--color-border);
                 }
+                
                 /* 图片容器，用于限制最大高度 */
                 .image-container {
                     max-height: 400px;
                     overflow: auto;
-                    margin: 12px 0;
+                    margin: 14px 0;
+                    border-radius: var(--radius-sm);
                 }
 
                 /* 添加 tool 消息的样式 */
                 .tool {
-                    background-color: #f3f4f6;
-                    margin: 20px 0;
-                    border: 1px solid #d1d5db;
+                    background-color: var(--color-code-bg);
+                    margin: 16px 0;
                     position: relative;
                 }
                 
                 .tool:before {
                     content: "Tool";
                     position: absolute;
-                    top: -10px;
+                    top: -8px;
                     left: 12px;
-                    background: #6366f1;
-                    color: white;
+                    background: #ececec;
+                    color: #666;
                     font-size: 12px;
-                    padding: 2px 8px;
-                    border-radius: 10px;
+                    padding: 1px 6px;
+                    border-radius: 4px;
+                    font-weight: 500;
+                    box-shadow: var(--shadow-sm);
+                    border: 1px solid var(--color-border);
                 }
                 
                 /* 用户消息中的工具图标 */
@@ -241,25 +285,26 @@ class HtmlGenerator:
                     position: absolute;
                     top: 10px;
                     right: 10px;
-                    width: 22px;
-                    height: 22px;
+                    width: 18px;
+                    height: 18px;
                     cursor: pointer;
-                    color: #4b7bec;
+                    color: #999;
                     opacity: 0.7;
                     transition: all 0.2s ease;
-                    background-color: rgba(255, 255, 255, 0.8);
+                    background-color: var(--color-background);
                     padding: 3px;
                     border-radius: 4px;
-                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                    box-shadow: var(--shadow-sm);
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     z-index: 10;
+                    border: 1px solid var(--color-border);
                 }
                 
                 .tools-icon:hover {
                     opacity: 1;
-                    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+                    box-shadow: var(--shadow-md);
                     transform: translateY(-1px);
                 }
                 
@@ -267,16 +312,16 @@ class HtmlGenerator:
                 .tools-popup {
                     display: none;
                     position: fixed;
-                    background: white;
-                    border: 1px solid #e5e7eb;
-                    border-radius: 8px;
-                    padding: 10px;
+                    background: var(--color-card);
+                    border: 1px solid var(--color-border);
+                    border-radius: var(--radius-md);
+                    padding: 14px;
                     width: 400px;
                     max-width: 90vw;
                     max-height: 60vh;
                     overflow: hidden;
                     z-index: 100;
-                    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+                    box-shadow: var(--shadow-md);
                 }
                 
                 .tools-popup-content {
@@ -287,13 +332,13 @@ class HtmlGenerator:
                 .tools-popup pre {
                     margin: 0;
                     white-space: pre-wrap;
-                    padding: 8px;
-                    border-radius: 6px;
-                    background-color: #f8f9fa;
-                    border: 1px solid #f0f0f0;
+                    padding: 12px;
+                    border-radius: var(--radius-sm);
+                    background-color: var(--color-code-bg);
                     font-size: 13px;
                     overflow: auto;
                     height: 100%;
+                    border: none;
                 }
                 
                 .tools-popup code {
@@ -308,7 +353,7 @@ class HtmlGenerator:
                 }
                 
                 @keyframes fadeIn {
-                    from { opacity: 0; transform: translateY(-10px); }
+                    from { opacity: 0; transform: translateY(-5px); }
                     to { opacity: 1; transform: translateY(0); }
                 }
                 
@@ -318,8 +363,8 @@ class HtmlGenerator:
                     top: 8px;
                     right: 10px;
                     cursor: pointer;
-                    font-size: 18px;
-                    color: #9ca3af;
+                    font-size: 16px;
+                    color: #999;
                     line-height: 1;
                     width: 20px;
                     height: 20px;
@@ -327,33 +372,43 @@ class HtmlGenerator:
                     align-items: center;
                     justify-content: center;
                     border-radius: 50%;
+                    background: var(--color-code-bg);
+                    transition: all 0.2s ease;
                 }
                 
                 .tools-popup-close:hover {
-                    color: #4b5563;
-                    background-color: #f3f4f6;
+                    background-color: var(--color-border);
                 }
 
                 /* 工具信息标题 */
                 .tools-popup-title {
-                    font-size: 14px;
-                    font-weight: 600;
-                    color: #4b7bec;
-                    margin: 0 0 8px 0;
+                    font-size: 13px;
+                    font-weight: 500;
+                    color: #666;
+                    margin: 0 0 12px 0;
                     padding: 0 20px 8px 0;
-                    border-bottom: 1px solid #e5e7eb;
+                    border-bottom: 1px solid var(--color-border);
                     line-height: 1.5;
                 }
                 
                 /* 响应式调整 */
                 @media (max-width: 600px) {
                     .tools-popup {
-                        width: calc(100vw - 40px);
+                        width: calc(100vw - 32px);
                         max-height: 70vh;
                     }
                     
                     .tools-popup pre {
                         max-height: calc(70vh - 50px);
+                    }
+                    
+                    body {
+                        padding: 20px 12px;
+                    }
+                    
+                    .message {
+                        margin: 16px 0;
+                        padding: 12px 14px;
                     }
                 }
 
@@ -361,11 +416,47 @@ class HtmlGenerator:
                 .content-text {
                     display: inline;
                 }
+                
+                /* Grok风格的代码高亮 */
+                .hljs {
+                    background-color: var(--color-code-bg);
+                    color: var(--color-text);
+                    border-radius: var(--radius-sm);
+                }
+                
+                /* JSON键名 */
+                .hljs-attr, 
+                .hljs-attribute {
+                    color: #5c6bc0;
+                    font-weight: 500;
+                }
+                
+                /* JSON字符串值 */
+                .hljs-string {
+                    color: #43a047;
+                }
+                
+                /* JSON数值 */
+                .hljs-number {
+                    color: #e57373;
+                }
+                
+                /* JSON布尔值和null */
+                .hljs-literal {
+                    color: #f57c00;
+                }
+                
+                /* JSON符号（花括号、方括号、逗号、冒号等） */
+                .hljs-punctuation {
+                    color: #9e9e9e;
+                }
             </style>
-            <!-- 引入代码高亮库 -->
+            <!-- Inter 字体 -->
+            <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+            <!-- 代码高亮库 -->
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
             <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
-            <script>hljs.highlightAll();</script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/json.min.js"></script>
             <script>
             document.addEventListener('DOMContentLoaded', function() {
                 // 全局弹出层，只创建一次
@@ -514,6 +605,15 @@ class HtmlGenerator:
                     // 确保所有图标都已初始化
                     initToolsIcons();
                 }, 100);
+                
+                // 初始化代码高亮
+                if (window.hljs) {
+                    hljs.configure({
+                        languages: ['json', 'javascript', 'python', 'bash', 'html', 'css'],
+                        ignoreUnescapedHTML: true
+                    });
+                    hljs.highlightAll();
+                }
             });
             </script>
         </head>
@@ -713,7 +813,6 @@ class HtmlGenerator:
         with open(self.html_file, "a", encoding="utf-8") as f:
             f.write("""
             </div>
-            <script>hljs.highlightAll();</script>
         </body>
         </html>
         """)
@@ -755,3 +854,170 @@ class HtmlGenerator:
             """
             with open(self.html_file, "a", encoding="utf-8") as f:
                 f.write(divider_html)
+
+    def append_script(self):
+        """添加自定义的JavaScript代码"""
+        if self.html_file:
+            script_content = """
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // 全局弹出层，只创建一次
+                const popupContainer = document.createElement('div');
+                popupContainer.className = 'tools-popup';
+                popupContainer.innerHTML = `
+                    <span class="tools-popup-close" title="关闭">&times;</span>
+                    <div class="tools-popup-title">可用工具列表</div>
+                    <div class="tools-popup-content">
+                        <pre><code class="language-json"></code></pre>
+                    </div>
+                `;
+                document.body.appendChild(popupContainer);
+                
+                // 关闭按钮事件
+                popupContainer.querySelector('.tools-popup-close').addEventListener('click', function() {
+                    popupContainer.classList.remove('tools-popup-visible');
+                });
+                
+                // 初始化所有工具图标的点击事件
+                function initToolsIcons() {
+                    document.querySelectorAll('.tools-icon').forEach(icon => {
+                        if (!icon.dataset.initialized) {
+                            icon.dataset.initialized = 'true';
+                            icon.addEventListener('click', handleToolIconClick);
+                        }
+                    });
+                }
+                
+                // 工具图标点击处理函数
+                function handleToolIconClick(e) {
+                    const icon = e.currentTarget;
+                    const message = icon.closest('.message');
+                    const toolsData = message.querySelector('.tools-data');
+                    
+                    if (toolsData) {
+                        // 获取工具数据
+                        const toolsJson = toolsData.getAttribute('data-tools');
+                        
+                        // 填充弹出层内容
+                        const codeElement = popupContainer.querySelector('code');
+                        codeElement.textContent = toolsJson;
+                        
+                        // 应用语法高亮
+                        if (window.hljs) {
+                            hljs.highlightElement(codeElement);
+                        }
+                        
+                        // 定位弹出层
+                        const iconRect = icon.getBoundingClientRect();
+                        popupContainer.style.top = `${iconRect.bottom + 5}px`;
+                        popupContainer.style.right = `${window.innerWidth - iconRect.right}px`;
+                        
+                        // 显示弹出层
+                        popupContainer.classList.add('tools-popup-visible');
+                        
+                        // 调整位置
+                        adjustPopupPosition(popupContainer);
+                        
+                        // 阻止事件冒泡
+                        e.stopPropagation();
+                    }
+                }
+                
+                // 调整弹出框位置，确保在视窗内
+                function adjustPopupPosition(popup) {
+                    const rect = popup.getBoundingClientRect();
+                    const viewportHeight = window.innerHeight;
+                    const viewportWidth = window.innerWidth;
+                    
+                    // 检查是否超出底部边界
+                    if (rect.bottom > viewportHeight) {
+                        // 如果弹出框太大，则将其放到顶部附近
+                        if (rect.height > viewportHeight * 0.6) {
+                            popup.style.top = '20px';
+                        } else {
+                            const overflowBottom = rect.bottom - viewportHeight;
+                            popup.style.top = `${parseInt(popup.style.top || '0') - overflowBottom - 10}px`;
+                        }
+                    }
+                    
+                    // 检查是否超出右侧边界
+                    if (rect.right > viewportWidth) {
+                        popup.style.right = '10px';
+                        popup.style.left = 'auto';
+                    }
+                    
+                    // 检查是否超出左侧边界
+                    if (rect.left < 0) {
+                        popup.style.left = '10px';
+                        popup.style.right = 'auto';
+                    }
+                }
+                
+                // 点击文档其他区域关闭弹出框
+                document.addEventListener('click', function(e) {
+                    if (!e.target.closest('.tools-popup') && !e.target.closest('.tools-icon')) {
+                        popupContainer.classList.remove('tools-popup-visible');
+                    }
+                });
+                
+                // 窗口大小改变时重新调整弹出框的位置
+                window.addEventListener('resize', function() {
+                    if (popupContainer.classList.contains('tools-popup-visible')) {
+                        adjustPopupPosition(popupContainer);
+                    }
+                });
+                
+                // 初始化现有图标
+                initToolsIcons();
+                
+                // 使用MutationObserver监听DOM变化，处理动态添加的工具图标
+                const observer = new MutationObserver(function(mutations) {
+                    let hasNewIcons = false;
+                    
+                    mutations.forEach(function(mutation) {
+                        if (mutation.type === 'childList') {
+                            const icons = mutation.target.querySelectorAll('.tools-icon:not([data-initialized])');
+                            if (icons.length > 0) {
+                                hasNewIcons = true;
+                            }
+                        }
+                    });
+                    
+                    if (hasNewIcons) {
+                        initToolsIcons();
+                    }
+                });
+                
+                // 开始观察DOM变化
+                observer.observe(document.getElementById('conversation'), { 
+                    childList: true, 
+                    subtree: true 
+                });
+                
+                // 初始化时检查所有用户消息内容高度
+                setTimeout(() => {
+                    document.querySelectorAll('.message.user').forEach(message => {
+                        // 移除空格、换行符等空白字符，检查消息是否为空
+                        const text = message.textContent.trim();
+                        if (!text || text.length === 0) {
+                            message.style.padding = '5px 20px';
+                        }
+                    });
+                    
+                    // 确保所有图标都已初始化
+                    initToolsIcons();
+                }, 100);
+                
+                // 初始化代码高亮
+                if (window.hljs) {
+                    hljs.configure({
+                        languages: ['json', 'javascript', 'python', 'bash', 'html', 'css'],
+                        ignoreUnescapedHTML: true
+                    });
+                    hljs.highlightAll();
+                }
+            });
+            </script>
+            """
+            with open(self.html_file, "a", encoding="utf-8") as f:
+                f.write(script_content)

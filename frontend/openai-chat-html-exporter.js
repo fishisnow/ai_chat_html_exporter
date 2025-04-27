@@ -6,246 +6,6 @@ class OpenaiChatHtmlExporter {
     this.processedMessageCount = 0;
     this.htmlFile = null;
     
-    // 定义样式
-    this.baseStyles = `
-      body {
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-          max-width: 800px;
-          margin: 0 auto;
-          padding: 20px;
-          background-color: #f7f7f8;
-          line-height: 1.6;
-          color: #374151;
-      }
-      .message {
-          margin: 20px 0;
-          padding: 16px 20px;
-          border-radius: 16px;
-          white-space: pre-wrap;
-          word-wrap: break-word;
-          font-size: 15px;
-          line-height: 1.5;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-          transition: all 0.2s ease;
-      }
-      
-      .message:hover {
-          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      }
-      
-      .message > div {
-          margin: 12px 0;
-      }
-      
-      .message p {
-          margin: 8px 0;
-      }
-      
-      .message > *:first-child {
-          margin-top: 0;
-      }
-      
-      .message > *:last-child {
-          margin-bottom: 0;
-      }
-      .user {
-          background-color: #e9f2ff;
-          margin-right: 15%;
-          border: 1px solid #d1e3ff;
-          position: relative;
-      }
-      
-      .user:before {
-          content: "用户";
-          position: absolute;
-          top: -10px;
-          left: 12px;
-          background: #4b7bec;
-          color: white;
-          font-size: 12px;
-          padding: 2px 8px;
-          border-radius: 10px;
-      }
-      
-      .assistant {
-          background-color: #ffffff;
-          margin-left: 15%;
-          border: 1px solid #e5e7eb;
-          position: relative;
-      }
-      
-      .assistant:before {
-          content: "AI";
-          position: absolute;
-          top: -10px;
-          left: 12px;
-          background: #45aaf2;
-          color: white;
-          font-size: 12px;
-          padding: 2px 8px;
-          border-radius: 10px;
-      }
-
-      .system {
-          background-color: #f0f9ff;
-          margin: 20px 0;
-          border: 1px solid #bae6fd;
-          position: relative;
-          font-style: italic;
-      }
-      
-      .system:before {
-          content: "系统";
-          position: absolute;
-          top: -10px;
-          left: 12px;
-          background: #0ea5e9;
-          color: white;
-          font-size: 12px;
-          padding: 2px 8px;
-          border-radius: 10px;
-      }
-
-      pre {
-          background-color: #f8f9fa;
-          padding: 12px;
-          border-radius: 8px;
-          overflow-x: auto;
-          margin: 12px 0;
-          font-family: 'Menlo', 'Consolas', monospace;
-          font-size: 14px;
-          line-height: 1.4;
-          border: 1px solid #e5e7eb;
-      }
-      code {
-          font-family: 'Menlo', 'Consolas', monospace;
-          background-color: #f3f4f6;
-          padding: 2px 4px;
-          border-radius: 4px;
-          font-size: 14px;
-      }
-      .tool-call-header {
-          margin: 12px 0 0 0;
-          display: flex;
-          align-items: center;
-          padding: 8px 12px;
-          background-color: #f1f5f9;
-          border-radius: 6px 6px 0 0;
-          font-weight: 500;
-          color: #334155;
-      }
-      
-      .tool-call-icon {
-          width: 16px;
-          height: 16px;
-          margin-right: 8px;
-          color: #475569;
-      }
-      
-      .tool-call-title {
-          font-size: 0.9em;
-          font-weight: 600;
-      }
-
-      .tool-call-container {
-          margin: 12px 0;
-      }
-      
-      .tool-call-header + pre {
-          margin-top: 0;
-          border-top-left-radius: 0;
-          border-top-right-radius: 0;
-      }
-
-      h1 {
-          color: #111827;
-          font-size: 1.5em;
-          font-weight: 600;
-          margin-bottom: 24px;
-          text-align: center;
-      }
-      /* 图片样式 */
-      img {
-          max-width: 100%;
-          border-radius: 8px;
-          margin: 8px 0;
-          display: block;
-      }
-      /* 图片容器，用于限制最大高度 */
-      .image-container {
-          max-height: 400px;
-          overflow: auto;
-          margin: 12px 0;
-      }
-      /* tool 样式 */
-      .tool {
-          background-color: #f3f4f6;
-          margin: 20px 0;
-          border: 1px solid #d1d5db;
-          position: relative;
-      }
-      
-      .tool:before {
-          content: "Tool";
-          position: absolute;
-          top: -10px;
-          left: 12px;
-          background: #6366f1;
-          color: white;
-          font-size: 12px;
-          padding: 2px 8px;
-          border-radius: 10px;
-      }
-    `;
-    
-    this.additionalStyles = `
-      .html-code {
-          background-color: #1e1e1e;
-          border-radius: 6px;
-          margin: 10px 0;
-          padding: 15px;
-          overflow-x: auto;
-      }
-      
-      .html-code code {
-          font-family: 'Fira Code', 'Consolas', monospace;
-          font-size: 14px;
-          line-height: 1.5;
-          color: #d4d4d4;
-      }
-      
-      .html-code .token.tag {
-          color: #569cd6;
-      }
-      
-      .html-code .token.attr-name {
-          color: #9cdcfe;
-      }
-      
-      .html-code .token.attr-value {
-          color: #ce9178;
-      }
-      
-      .html-code .token.punctuation {
-          color: #808080;
-      }
-      
-      .image-container {
-          margin: 10px 0;
-          padding: 10px;
-          background: #f8f9fa;
-          border-radius: 6px;
-          border: 1px solid #e9ecef;
-      }
-      
-      .image-container img {
-          display: block;
-          max-width: 100%;
-          height: auto;
-          border-radius: 4px;
-      }
-    `;
-    
     // 创建一个初始HTML文件
     this.createHtmlFile();
   }
@@ -406,20 +166,356 @@ class OpenaiChatHtmlExporter {
       <html>
       <head>
           <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>AI对话历史</title>
+          <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
           <style>
-              ${this.baseStyles}
-              ${this.additionalStyles}
+              :root {
+                  --color-text: #1a1a1a;
+                  --color-background: #ffffff;
+                  --color-accent: #0070f3;
+                  --color-border: #f0f0f0;
+                  --color-card: #ffffff;
+                  --color-user-bg: #f9fafb;
+                  --color-assistant-bg: #ffffff;
+                  --color-system-bg: #f9f9f9;
+                  --color-code-bg: #f7f7f7;
+                  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
+                  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.05);
+                  --radius-sm: 6px;
+                  --radius-md: 10px;
+                  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+              }
+
+              body {
+                  font-family: var(--font-sans);
+                  max-width: 768px;
+                  margin: 0 auto;
+                  padding: 40px 16px;
+                  background-color: var(--color-background);
+                  line-height: 1.6;
+                  color: var(--color-text);
+                  font-size: 15px;
+              }
+              .message {
+                  margin: 20px 0;
+                  padding: 16px 18px;
+                  border-radius: var(--radius-md);
+                  white-space: pre-wrap;
+                  word-wrap: break-word;
+                  font-size: 15px;
+                  line-height: 1.6;
+                  box-shadow: var(--shadow-sm);
+                  transition: all 0.2s ease;
+                  position: relative;
+                  border: 1px solid var(--color-border);
+              }
+              
+              .message:hover {
+                  box-shadow: var(--shadow-md);
+              }
+              
+              .message > div {
+                  margin: 12px 0;
+              }
+              
+              .message p {
+                  margin: 8px 0;
+              }
+              
+              .message > *:first-child {
+                  margin-top: 0;
+              }
+              
+              .message > *:last-child {
+                  margin-bottom: 0;
+              }
+              .user {
+                  background-color: var(--color-user-bg);
+                  margin-right: 10%;
+                  position: relative;
+                  align-self: flex-start;
+                  max-width: 90%;
+              }
+              
+              .user:before {
+                  content: "用户";
+                  position: absolute;
+                  top: -8px;
+                  left: 12px;
+                  background: #f2f2f2;
+                  color: #666;
+                  font-size: 12px;
+                  padding: 1px 6px;
+                  border-radius: 4px;
+                  font-weight: 500;
+                  box-shadow: var(--shadow-sm);
+                  border: 1px solid var(--color-border);
+              }
+              
+              .assistant {
+                  background-color: var(--color-assistant-bg);
+                  margin-left: 10%;
+                  position: relative;
+                  align-self: flex-end;
+                  max-width: 90%;
+              }
+              
+              .assistant:before {
+                  content: "AI";
+                  position: absolute;
+                  top: -8px;
+                  left: 12px;
+                  background: #e9e9e9;
+                  color: #666;
+                  font-size: 12px;
+                  padding: 1px 6px;
+                  border-radius: 4px;
+                  font-weight: 500;
+                  box-shadow: var(--shadow-sm);
+                  border: 1px solid var(--color-border);
+              }
+
+              .system {
+                  background-color: var(--color-system-bg);
+                  margin: 16px 0;
+                  position: relative;
+                  font-style: italic;
+              }
+              
+              .system:before {
+                  content: "系统";
+                  position: absolute;
+                  top: -8px;
+                  left: 12px;
+                  background: #ececec;
+                  color: #666;
+                  font-size: 12px;
+                  padding: 1px 6px;
+                  border-radius: 4px;
+                  font-weight: 500;
+                  box-shadow: var(--shadow-sm);
+                  border: 1px solid var(--color-border);
+              }
+
+              pre {
+                  background-color: var(--color-code-bg);
+                  padding: 14px 16px;
+                  border-radius: var(--radius-sm);
+                  overflow-x: auto;
+                  margin: 14px 0;
+                  font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+                  font-size: 13.5px;
+                  line-height: 1.5;
+                  border: 1px solid var(--color-border);
+              }
+              code {
+                  font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+                  background-color: var(--color-code-bg);
+                  padding: 2px 4px;
+                  border-radius: 3px;
+                  font-size: 13.5px;
+              }
+              .tool-call-header {
+                  margin: 14px 0 0 0;
+                  display: flex;
+                  align-items: center;
+                  padding: 10px 14px;
+                  background-color: var(--color-code-bg);
+                  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+                  font-weight: 500;
+                  color: var(--color-text);
+                  border: 1px solid var(--color-border);
+                  border-bottom: none;
+              }
+              
+              .tool-call-icon {
+                  width: 14px;
+                  height: 14px;
+                  margin-right: 8px;
+                  color: var(--color-text);
+                  opacity: 0.75;
+              }
+              
+              .tool-call-title {
+                  font-size: 0.85em;
+                  font-weight: 500;
+                  color: #666;
+              }
+
+              .tool-call-container {
+                  margin: 14px 0;
+                  border-radius: var(--radius-sm);
+                  overflow: hidden;
+              }
+              
+              .tool-call-header + pre {
+                  margin-top: 0;
+                  border-top: none;
+                  border-top-left-radius: 0;
+                  border-top-right-radius: 0;
+              }
+
+              h1 {
+                  font-size: 1.75rem;
+                  font-weight: 700;
+                  margin-bottom: 32px;
+                  text-align: center;
+                  letter-spacing: -0.015em;
+                  color: var(--color-text);
+              }
+              /* 图片样式 */
+              img {
+                  max-width: 100%;
+                  border-radius: var(--radius-sm);
+                  margin: 12px 0;
+                  display: block;
+                  border: 1px solid var(--color-border);
+              }
+              /* 图片容器，用于限制最大高度 */
+              .image-container {
+                  max-height: 400px;
+                  overflow: auto;
+                  margin: 14px 0;
+                  border-radius: var(--radius-sm);
+              }
+              /* tool 样式 */
+              .tool {
+                  background-color: var(--color-code-bg);
+                  margin: 16px 0;
+                  position: relative;
+              }
+              
+              .tool:before {
+                  content: "Tool";
+                  position: absolute;
+                  top: -8px;
+                  left: 12px;
+                  background: #ececec;
+                  color: #666;
+                  font-size: 12px;
+                  padding: 1px 6px;
+                  border-radius: 4px;
+                  font-weight: 500;
+                  box-shadow: var(--shadow-sm);
+                  border: 1px solid var(--color-border);
+              }
+              
+              /* HTML代码样式 */
+              .html-code {
+                  background-color: var(--color-code-bg);
+                  border-radius: var(--radius-sm);
+                  margin: 14px 0;
+                  padding: 14px 16px;
+                  overflow-x: auto;
+              }
+              
+              .html-code code {
+                  font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+                  font-size: 13.5px;
+                  line-height: 1.5;
+                  color: var(--color-text);
+              }
+              
+              .html-code .token.tag {
+                  color: var(--color-accent);
+              }
+              
+              .html-code .token.attr-name {
+                  color: #9cdcfe;
+              }
+              
+              .html-code .token.attr-value {
+                  color: #ce9178;
+              }
+              
+              .html-code .token.punctuation {
+                  color: #808080;
+              }
+              
+              .image-container {
+                  margin: 14px 0;
+                  padding: 12px;
+                  background: var(--color-code-bg);
+                  border-radius: var(--radius-sm);
+                  border: 1px solid var(--color-border);
+              }
+              
+              .image-container img {
+                  display: block;
+                  max-width: 100%;
+                  height: auto;
+                  border-radius: 4px;
+              }
+
+              /* 移动设备响应式调整 */
+              @media (max-width: 600px) {
+                  body {
+                      padding: 20px 12px;
+                  }
+                  
+                  .message {
+                      margin: 16px 0;
+                      padding: 12px 14px;
+                  }
+                  
+                  pre {
+                      padding: 12px;
+                  }
+              }
+              
+              /* Grok风格的代码高亮 */
+              .hljs {
+                  background-color: var(--color-code-bg);
+                  color: var(--color-text);
+                  border-radius: var(--radius-sm);
+              }
+              
+              /* JSON键名 */
+              .hljs-attr, 
+              .hljs-attribute {
+                  color: #5c6bc0;
+                  font-weight: 500;
+              }
+              
+              /* JSON字符串值 */
+              .hljs-string {
+                  color: #43a047;
+              }
+              
+              /* JSON数值 */
+              .hljs-number {
+                  color: #e57373;
+              }
+              
+              /* JSON布尔值和null */
+              .hljs-literal {
+                  color: #f57c00;
+              }
+              
+              /* JSON符号（花括号、方括号、逗号、冒号等） */
+              .hljs-punctuation {
+                  color: #9e9e9e;
+              }
           </style>
-          <!-- 使用更好的代码高亮库 -->
-          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism-tomorrow.min.css">
-          <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
-          <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-markup.min.js"></script>
+          <!-- 使用代码高亮库 -->
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/json.min.js"></script>
           <script>
               // 确保代码高亮在动态内容加载后执行
               document.addEventListener('DOMContentLoaded', (event) => {
-                  if (typeof Prism !== 'undefined') {
-                      Prism.highlightAll();
+                  if (typeof hljs !== 'undefined') {
+                      hljs.configure({
+                          languages: ['json', 'javascript', 'python', 'bash', 'html', 'css'],
+                          ignoreUnescapedHTML: true
+                      });
+                      hljs.highlightAll();
+                      
+                      // 初始化所有JSON代码块
+                      document.querySelectorAll('pre code.language-json').forEach((block) => {
+                          hljs.highlightElement(block);
+                      });
                   }
               });
           </script>
