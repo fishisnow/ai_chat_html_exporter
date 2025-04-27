@@ -55,7 +55,7 @@ class HtmlExportCallbackHandler(StdOutCallbackHandler, HtmlGenerator):
         # 如果是新的对话但不是第一次对话，添加分隔线
         if is_new_conversation and not self.is_first_conversation:
             self.step = self.step + 1
-            self.append_divider(f"————————————Step {self.step}————————————")
+            self.append_divider(f"———Step {self.step}———")
 
         if is_new_conversation:
             self.previous_messages_count = len(current_messages)
