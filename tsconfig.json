@@ -1,0 +1,7 @@
+{
+  "compilerOptions": {
+    "target": "es2017", // 或更高版本
+    "lib": ["dom", "es2017"], // 添加es2017支持
+    "types": ["node"] // 添加node类型支持
+  }
+}
