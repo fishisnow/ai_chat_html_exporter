@@ -87,6 +87,16 @@ const openaiConfig = {
 const openaiClient = createChatExporterOpenAI(OpenAI, openaiConfig);
 ```
 
+```typescript
+// copy openai-chat-html-exporter.ts to your project
+import { createChatExporterOpenAI } from 'openai-chat-html-exporter';
+const openaiConfig = {
+  apiKey: 'your-api-key',
+  baseUrl: 'https://api.openai.com/v1',
+};
+const openaiClient = createChatExporterOpenAI(OpenAI, openaiConfig);
+```
+
 ## ⚙️ Custom Configuration
 ```python
 # Customize the output directory

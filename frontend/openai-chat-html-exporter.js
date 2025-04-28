@@ -1,8 +1,6 @@
 // OpenAI 拦截器，用于捕获对话记录并自动导出为HTML
 class OpenaiChatHtmlExporter {
-  constructor(originalInstance) {
-    this.originalInstance = originalInstance;
-    this.conversations = [];
+  constructor() {
     this.processedMessageCount = 0;
     this.htmlFile = null;
     
@@ -145,6 +143,120 @@ class OpenaiChatHtmlExporter {
     // 完成当前对话，关闭并重新创建HTML文件
     this.closeHtmlFile();
     this.createHtmlFile();
+  }
+
+  // 处理 Azure OpenAI 的 SSE 流式响应
+  processAzureSSEResponse(responseText) {
+    try {
+      // 按 SSE 的数据块分割
+      const chunks = responseText.split("data: ");
+      let fullContent = "";
+      let allToolCalls = [];
+      let currentToolCalls = {}; // 用于收集同一工具调用的不同部分
+
+      for (const chunk of chunks) {
+        if (!chunk.trim() || chunk.trim() === "[DONE]") {
+          continue;
+        }
+
+        try {
+          // 解析 JSON 数据块
+          const data = JSON.parse(chunk.trim());
+          // 提取内容
+          if (data.choices && data.choices.length > 0) {
+            const choice = data.choices[0];
+            const delta = choice.delta || {};
+
+            // 处理文本内容
+            if (delta.content != null) {
+              fullContent += delta.content;
+            }
+
+            // 处理工具调用
+            if (delta.tool_calls && delta.tool_calls.length > 0) {
+              for (const toolCall of delta.tool_calls) {
+                const toolIndex = toolCall.index || 0;
+
+                // 如果是新的工具调用索引，初始化结构
+                if (!currentToolCalls[toolIndex]) {
+                  currentToolCalls[toolIndex] = {
+                    id: toolCall.id || "",
+                    type: toolCall.type || "function",
+                    function: {
+                      name: "",
+                      arguments: ""
+                    }
+                  };
+                }
+
+                // 更新工具调用信息
+                if (toolCall.function) {
+                  if (toolCall.function.name) {
+                    currentToolCalls[toolIndex].function.name += toolCall.function.name;
+                  }
+                  if (toolCall.function.arguments) {
+                    currentToolCalls[toolIndex].function.arguments += toolCall.function.arguments;
+                  }
+                }
+              }
+            }
+
+            // 检查是否完成
+            if (choice.finish_reason != null) {
+              // 收集所有完成的工具调用
+              for (const toolCall of Object.values(currentToolCalls)) {
+                if (toolCall.function.name) { // 仅添加有名称的工具调用
+                  allToolCalls.push(toolCall);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.warn(`无法解析 SSE 块: ${chunk}`, error);
+          continue;
+        }
+      }
+
+      // 转换工具调用格式
+      const formattedToolCalls = allToolCalls.map(toolCall => {
+        try {
+          return {
+            function: {
+              name: toolCall.function.name,
+              arguments: toolCall.function.arguments
+            }
+          };
+        } catch (error) {
+          console.warn(`无法格式化工具调用: ${JSON.stringify(toolCall)}`, error);
+          return {
+            function: {
+              name: toolCall.function.name,
+              arguments: "{}"  // 使用空对象作为默认值
+            }
+          };
+        }
+      });
+
+      // 返回构造的标准响应格式
+      return {
+        choices: [{
+          message: {
+            content: fullContent,
+            tool_calls: formattedToolCalls
+          }
+        }]
+      };
+    } catch (error) {
+      console.error("处理 Azure OpenAI 流式响应时出错:", error);
+      return {
+        choices: [{
+          message: {
+            content: "",
+            tool_calls: []
+          }
+        }]
+      };
+    }
   }
 
   // 记录错误信息
@@ -724,19 +836,6 @@ class OpenaiChatHtmlExporter {
       return String(obj);
     }
   }
-
-  // 保存对话记录到localStorage (可选功能)
-  saveConversations() {
-    try {
-      localStorage.setItem('ai-chat-history', JSON.stringify(this.conversations));
-    } catch (e) {
-      console.warn('无法保存AI对话历史到localStorage', e);
-    }
-  }
-
-  getConversations() {
-    return this.conversations;
-  }
 }
 
 // 创建带拦截器的OpenAI客户端
@@ -754,7 +853,7 @@ export function createChatExporterOpenAI(OpenAIClass, config) {
     try {
       // 创建拦截器实例（如果还没有）
       if (!originalInstance._interceptor) {
-        originalInstance._interceptor = new OpenaiChatHtmlExporter(originalInstance);
+        originalInstance._interceptor = new OpenaiChatHtmlExporter();
       }
       
       const interceptor = originalInstance._interceptor;
@@ -772,7 +871,21 @@ export function createChatExporterOpenAI(OpenAIClass, config) {
       
       // 尝试记录AI响应，但不影响响应返回
       try {
-        interceptor.processAIResponse(response);
+        // 检查是否为 Azure 的 SSE 流式响应
+        if (response.headers && 
+            response.headers.get("content-type") && 
+            response.headers.get("content-type").includes("text/event-stream")) {
+          
+          // 读取流式响应内容
+          const responseBody = await response.text();
+          // 处理 SSE 流式响应，转换为标准格式
+          const standardResponse = interceptor.processAzureSSEResponse(responseBody);
+          // 记录处理后的响应
+          interceptor.processAIResponse(standardResponse);
+        } else {
+          // 处理普通响应
+          interceptor.processAIResponse(response);
+        }
       } catch (loggingError) {
         console.warn('记录AI响应时出错:', loggingError);
         // 继续执行，不影响响应返回
@@ -801,7 +914,7 @@ export function createChatExporterOpenAI(OpenAIClass, config) {
       if (prop === 'interceptor') {
         try {
           if (!target._interceptor) {
-            target._interceptor = new OpenaiChatHtmlExporter(target);
+            target._interceptor = new OpenaiChatHtmlExporter();
           }
           return target._interceptor;
         } catch (error) {
