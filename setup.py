@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="ai_chat_html_exporter",
-    version="1.0.2.post1",
+    version="1.0.3.post1",
     packages=find_packages(),
     install_requires=[
         "langchain-core>=0.3.0",
