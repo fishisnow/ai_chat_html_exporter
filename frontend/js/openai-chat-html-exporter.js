@@ -1,279 +1,216 @@
 // OpenAI 拦截器，用于捕获对话记录并自动导出为HTML
 class OpenaiChatHtmlExporter {
-  constructor() {
-    this.processedMessageCount = 0;
-    this.htmlFile = null;
-    
-    // 创建一个初始HTML文件
-    this.createHtmlFile();
-  }
+    constructor() {
+        this.processedMessageCount = 0;
+        this.htmlFile = null;
+        this.previousMessagesCount = 0; // 记录上一次对话的消息数量
+        this.isFirstConversation = true; // 是否是第一次对话
+        this.step = 0; // 记录对话步骤
+
+        // 创建一个初始HTML文件
+        this.createHtmlFile();
+    }
 
 
-  // 处理用户消息并添加到HTML
-  processUserMessages(messages) {
-    if (!messages || !Array.isArray(messages)) return;
-    
-    try {
-      // 仅处理新消息
-      for (let i = this.processedMessageCount; i < messages.length; i++) {
-        const message = messages[i];
-        
+    // 处理用户消息并添加到HTML
+    processUserMessages(messages) {
+        if (!messages || !Array.isArray(messages)) return;
+
         try {
-          // 检查content是否为数组
-          if (Array.isArray(message.content)) {
-            // 处理多部分内容，确保每个部分的处理错误不会影响其他部分
-            const processedParts = message.content.map(part => {
-              try {
-                switch (part.type) {
-                  case 'image_url':
-                    return this.processImageContent(part.image_url);
-                  case 'text':
-                    return this.processTextContent(String(part.text || ''));
-                  default:
-                    return this.processContent(JSON.stringify(part));
+            // 判断是否是新对话
+            const isNewConversation = this.isNewConversation(messages);
+
+            // 如果是新的对话但不是第一次对话，添加分隔线
+            if (isNewConversation && !this.isFirstConversation) {
+                this.step += 1;
+                this.appendDividerToHtml(`———Step ${this.step}———`);
+                this.processedMessageCount = 0; // 重置消息计数器
+            }
+
+            if (isNewConversation) {
+                this.previousMessagesCount = messages.length;
+                this.isFirstConversation = false;
+            } else {
+                // 更新最近一次消息数量
+                this.previousMessagesCount = Math.max(this.previousMessagesCount, messages.length);
+            }
+
+            // 仅处理新消息
+            for (let i = this.processedMessageCount; i < messages.length; i++) {
+                const message = messages[i];
+
+                try {
+                    // 检查content是否为数组
+                    if (Array.isArray(message.content)) {
+                        // 处理多部分内容，确保每个部分的处理错误不会影响其他部分
+                        const processedParts = message.content.map(part => {
+                            try {
+                                switch (part.type) {
+                                    case 'image_url':
+                                        return this.processImageContent(part.image_url);
+                                    case 'text':
+                                        return this.processTextContent(String(part.text || ''));
+                                    default:
+                                        return this.processContent(JSON.stringify(part));
+                                }
+                            } catch (err) {
+                                console.warn(`处理消息部分时出错 (type: ${part.type}):`, err);
+                                // 返回原始内容的字符串形式
+                                return JSON.stringify(part);
+                            }
+                        }).filter(Boolean);
+
+                        this.appendMessageToHtml(message.role, processedParts.join('\n'));
+                    } else {
+                        // 处理普通文本内容
+                        this.appendMessageToHtml(message.role, this.processTextContent(String(message.content || '')));
+                    }
+
+                    this.processedMessageCount++;
+                } catch (err) {
+                    console.warn('处理单条消息时出错:', err);
+                    // 继续处理下一条消息
                 }
-              } catch (err) {
-                console.warn(`处理消息部分时出错 (type: ${part.type}):`, err);
-                // 返回原始内容的字符串形式
-                return JSON.stringify(part);
-              }
-            }).filter(Boolean);
-            
-            this.appendMessageToHtml(message.role, processedParts.join('\n'));
-          } else {
-            // 处理普通文本内容
-            this.appendMessageToHtml(
-              message.role, 
-              this.processTextContent(String(message.content || ''))
-            );
-          }
-          
-          this.processedMessageCount++;
+            }
         } catch (err) {
-          console.warn('处理单条消息时出错:', err);
-          // 继续处理下一条消息
+            console.error('处理消息列表时出错:', err);
+            // 不抛出错误，确保不影响原始功能
         }
-      }
-    } catch (err) {
-      console.error('处理消息列表时出错:', err);
-      // 不抛出错误，确保不影响原始功能
     }
-  }
 
-  // 处理文本内容
-  processTextContent(text) {
-    if (!text) return '';
-    
-    try {
-      // 检测是否包含HTML结构
-      const containsHtml = /<[a-z][\s\S]*>/i.test(text);
-      
-      if (containsHtml) {
-        // 如果包含HTML结构，直接作为代码块展示
-        return `<pre><code class="language-html">${this.escapeHtml(text)}</code></pre>`;
-      }
-      
-      // 处理普通文本，包括可能的其他代码块、内联代码等
-      return this.processContent(text);
-    } catch (error) {
-      console.warn('处理文本内容失败:', error);
-      return this.escapeHtml(text);
+    // 判断是否是新会话
+    isNewConversation(messages) {
+        if (this.previousMessagesCount === 0) {
+            return true;
+        }
+
+        // 如果消息数量不符合递增规律，可能是新会话
+        if (messages.length < this.previousMessagesCount + 1) {
+            return true;
+        }
+
+        return false;
     }
-  }
 
-  // 处理图片内容
-  processImageContent(imageUrl) {
-    if (!imageUrl || !imageUrl.url) return '';
-    
-    try {
-      return `<div class="image-container">
+    // 添加分隔符到HTML
+    appendDividerToHtml(text) {
+        const dividerHtml = `<div class="divider">${text}</div>`;
+        this.htmlContent += dividerHtml;
+        this.saveHtmlToFile();
+    }
+
+    // 处理文本内容
+    processTextContent(text) {
+        if (!text) return '';
+
+        try {
+            // 检测是否包含HTML结构
+            const containsHtml = /<[a-z][\s\S]*>/i.test(text);
+
+            if (containsHtml) {
+                // 如果包含HTML结构，直接作为代码块展示
+                return `<pre><code class="language-html">${this.escapeHtml(text)}</code></pre>`;
+            }
+
+            // 处理普通文本，包括可能的其他代码块、内联代码等
+            return this.processContent(text);
+        } catch (error) {
+            console.warn('处理文本内容失败:', error);
+            return this.escapeHtml(text);
+        }
+    }
+
+    // 处理图片内容
+    processImageContent(imageUrl) {
+        if (!imageUrl || !imageUrl.url) return '';
+
+        try {
+            return `<div class="image-container">
         <img src="${imageUrl.url}" alt="用户上传的图片" 
              title="图片详细度: ${imageUrl.detail || 'standard'}"
              style="max-width: 100%; height: auto;"
         />
       </div>`;
-    } catch (err) {
-      console.warn('处理图片内容时出错:', err);
-      return '';
-    }
-  }
-
-  // 处理普通内容（非HTML）
-  processContent(content) {
-    if (!content) return '';
-    
-    try {
-      // 如果content是对象，转换为字符串
-      if (typeof content === 'object') {
-        content = JSON.stringify(content, null, 2);
-      }
-      
-      let processed = content;
-      
-      // 处理代码块
-      processed = this.detectCodeBlocks(processed);
-      
-      // 处理内联代码
-      processed = this.detectInlineCode(processed);
-      
-      return processed;
-    } catch (error) {
-      console.warn('处理内容失败:', error);
-      return this.escapeHtml(content);
-    }
-  }
-
-  // 处理AI响应并添加到HTML
-  processAIResponse(response) {
-    if (!response || !response.choices || response.choices.length === 0) return;
-    
-    const aiMessage = response.choices[0].message;
-    if (!aiMessage) return;
-    
-    // 构建AI响应对象
-    const assistantMessage = {
-      content: aiMessage.content || "",
-      tool_calls: this.formatToolCalls(aiMessage.tool_calls || [])
-    };
-    
-    // 添加到HTML
-    this.appendMessageToHtml("assistant", assistantMessage);
-    this.processedMessageCount++;
-    
-    // 完成当前对话，关闭并重新创建HTML文件
-    this.closeHtmlFile();
-    this.createHtmlFile();
-  }
-
-  // 处理 Azure OpenAI 的 SSE 流式响应
-  processAzureSSEResponse(responseText) {
-    try {
-      // 按 SSE 的数据块分割
-      const chunks = responseText.split("data: ");
-      let fullContent = "";
-      let allToolCalls = [];
-      let currentToolCalls = {}; // 用于收集同一工具调用的不同部分
-
-      for (const chunk of chunks) {
-        if (!chunk.trim() || chunk.trim() === "[DONE]") {
-          continue;
+        } catch (err) {
+            console.warn('处理图片内容时出错:', err);
+            return '';
         }
+    }
+
+    // 处理普通内容（非HTML）
+    processContent(content) {
+        if (!content) return '';
 
         try {
-          // 解析 JSON 数据块
-          const data = JSON.parse(chunk.trim());
-          // 提取内容
-          if (data.choices && data.choices.length > 0) {
-            const choice = data.choices[0];
-            const delta = choice.delta || {};
-
-            // 处理文本内容
-            if (delta.content != null) {
-              fullContent += delta.content;
+            // 如果content是对象，转换为字符串
+            if (typeof content === 'object') {
+                content = JSON.stringify(content, null, 2);
             }
 
-            // 处理工具调用
-            if (delta.tool_calls && delta.tool_calls.length > 0) {
-              for (const toolCall of delta.tool_calls) {
-                const toolIndex = toolCall.index || 0;
+            let processed = content;
 
-                // 如果是新的工具调用索引，初始化结构
-                if (!currentToolCalls[toolIndex]) {
-                  currentToolCalls[toolIndex] = {
-                    id: toolCall.id || "",
-                    type: toolCall.type || "function",
-                    function: {
-                      name: "",
-                      arguments: ""
-                    }
-                  };
-                }
+            // 处理代码块
+            processed = this.detectCodeBlocks(processed);
 
-                // 更新工具调用信息
-                if (toolCall.function) {
-                  if (toolCall.function.name) {
-                    currentToolCalls[toolIndex].function.name += toolCall.function.name;
-                  }
-                  if (toolCall.function.arguments) {
-                    currentToolCalls[toolIndex].function.arguments += toolCall.function.arguments;
-                  }
-                }
-              }
-            }
+            // 处理内联代码
+            processed = this.detectInlineCode(processed);
 
-            // 检查是否完成
-            if (choice.finish_reason != null) {
-              // 收集所有完成的工具调用
-              for (const toolCall of Object.values(currentToolCalls)) {
-                if (toolCall.function.name) { // 仅添加有名称的工具调用
-                  allToolCalls.push(toolCall);
-                }
-              }
-            }
-          }
+            return processed;
         } catch (error) {
-          console.warn(`无法解析 SSE 块: ${chunk}`, error);
-          continue;
+            console.warn('处理内容失败:', error);
+            return this.escapeHtml(content);
         }
-      }
-
-      // 转换工具调用格式
-      const formattedToolCalls = allToolCalls.map(toolCall => {
-        try {
-          return {
-            function: {
-              name: toolCall.function.name,
-              arguments: toolCall.function.arguments
-            }
-          };
-        } catch (error) {
-          console.warn(`无法格式化工具调用: ${JSON.stringify(toolCall)}`, error);
-          return {
-            function: {
-              name: toolCall.function.name,
-              arguments: "{}"  // 使用空对象作为默认值
-            }
-          };
-        }
-      });
-
-      // 返回构造的标准响应格式
-      return {
-        choices: [{
-          message: {
-            content: fullContent,
-            tool_calls: formattedToolCalls
-          }
-        }]
-      };
-    } catch (error) {
-      console.error("处理 Azure OpenAI 流式响应时出错:", error);
-      return {
-        choices: [{
-          message: {
-            content: "",
-            tool_calls: []
-          }
-        }]
-      };
     }
-  }
 
-  // 记录错误信息
-  logError(errorMessage) {
-    this.appendMessageToHtml("system", `错误: ${errorMessage}`);
-    this.processedMessageCount++;
-    this.closeHtmlFile();
-    this.createHtmlFile();
-  }
+    // 处理AI响应并添加到HTML
+    processAIResponse(response) {
+        if (!response || !response.choices || response.choices.length === 0) return;
 
-  // 创建新的HTML文件
-  createHtmlFile() {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const htmlFilename = `ai-conversation-${timestamp}.html`;
-    
-    // 创建HTML头部
-    const htmlHeader = `
+        const aiMessage = response.choices[0].message;
+        if (!aiMessage) return;
+
+        // 构建AI响应对象
+        const assistantMessage = {
+            content: aiMessage.content || "", tool_calls: this.formatToolCalls(aiMessage.tool_calls || [])
+        };
+
+        // 添加到HTML
+        this.appendMessageToHtml("assistant", assistantMessage);
+        this.processedMessageCount++;
+
+        // 完成当前对话，关闭HTML文件
+        this.closeHtmlFile();
+    }
+
+    // 处理流式响应的完整内容
+    processStreamCompletionResponse(fullContent, allToolCalls) {
+        // 构建AI响应对象
+        const assistantMessage = {
+            content: fullContent || "", tool_calls: this.formatToolCalls(allToolCalls || [])
+        };
+
+        // 添加到HTML
+        this.appendMessageToHtml("assistant", assistantMessage);
+        this.processedMessageCount++;
+
+        // 完成当前对话，关闭HTML文件
+        this.closeHtmlFile();
+    }
+
+    // 记录错误信息
+    logError(errorMessage) {
+        this.appendMessageToHtml("system", `错误: ${errorMessage}`);
+        this.processedMessageCount++;
+        this.closeHtmlFile();
+    }
+
+    // 创建新的HTML文件
+    createHtmlFile() {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const htmlFilename = `ai-conversation-${timestamp}.html`;
+
+        // 创建HTML头部
+        const htmlHeader = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -408,6 +345,33 @@ class OpenaiChatHtmlExporter {
                   font-weight: 500;
                   box-shadow: var(--shadow-sm);
                   border: 1px solid var(--color-border);
+              }
+
+              .divider {
+                  text-align: center;
+                  margin: 30px 0;
+                  font-weight: 600;
+                  color: #666;
+                  position: relative;
+                  font-size: 16px;
+              }
+              
+              .divider:before,
+              .divider:after {
+                  content: "";
+                  position: absolute;
+                  top: 50%;
+                  width: 30%;
+                  height: 1px;
+                  background-color: var(--color-border);
+              }
+              
+              .divider:before {
+                  left: 0;
+              }
+              
+              .divider:after {
+                  right: 0;
               }
 
               pre {
@@ -636,54 +600,50 @@ class OpenaiChatHtmlExporter {
           <h1>AI对话历史</h1>
           <div id="conversation">
     `;
-    
-    // 保存HTML文件头部
-    this.htmlContent = htmlHeader;
-    this.htmlFilename = htmlFilename;
-    this.htmlFile = this.htmlFilename;
-    
-    // 保存到文件系统（如果是在Node.js环境）或下载（如果是在浏览器环境）
-    this.saveHtmlToFile();
-  }
 
-  // 关闭HTML文件
-  closeHtmlFile() {
-    if (!this.htmlFile) return;
-    
-    // 添加HTML尾部
-    const htmlFooter = `
+        // 保存HTML文件头部
+        this.htmlContent = htmlHeader;
+        this.htmlFilename = htmlFilename;
+        this.htmlFile = this.htmlFilename;
+
+        // 保存到文件系统（如果是在Node.js环境）或下载（如果是在浏览器环境）
+        this.saveHtmlToFile();
+    }
+
+    // 关闭HTML文件
+    closeHtmlFile() {
+        if (!this.htmlFile) return;
+
+        // 添加HTML尾部
+        const htmlFooter = `
           </div>
       </body>
       </html>
     `;
-    
-    this.htmlContent += htmlFooter;
-    
-    // 保存完整的HTML
-    this.saveHtmlToFile(true);
-  }
 
-  // 添加消息到HTML
-  appendMessageToHtml(role, content) {
-    if (!this.htmlFile) {
-      this.createHtmlFile();
+        this.htmlContent += htmlFooter;
+
+        // 保存完整的HTML
+        this.saveHtmlToFile(true);
     }
-    
-    let messageHtml = `<div class="message ${role}">`;
-    
-    if (role === "user" || role === "system") {
-      // 用户或系统消息，直接添加内容，不做额外转义
-      messageHtml += content;
-    } else {
-      // AI响应
-      if (typeof content === 'object') {
-        // 主要文本内容
-        messageHtml += content.content || "";
-        
-        // 工具调用
-        if (content.tool_calls && content.tool_calls.length > 0) {
-          content.tool_calls.forEach(toolCall => {
-            messageHtml += `
+
+    // 添加消息到HTML
+    appendMessageToHtml(role, content) {
+        let messageHtml = `<div class="message ${role}">`;
+
+        if (role === "user" || role === "system") {
+            // 用户或系统消息，直接添加内容，不做额外转义
+            messageHtml += content;
+        } else {
+            // AI响应
+            if (typeof content === 'object') {
+                // 主要文本内容
+                messageHtml += content.content || "";
+
+                // 工具调用
+                if (content.tool_calls && content.tool_calls.length > 0) {
+                    content.tool_calls.forEach(toolCall => {
+                        messageHtml += `
               <div class="tool-call-container">
                 <div class="tool-call-header">
                   <svg class="tool-call-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -694,235 +654,293 @@ class OpenaiChatHtmlExporter {
                 <pre><code>${this.formatJson(toolCall.function_args)}</code></pre>
               </div>
             `;
-          });
+                    });
+                }
+            } else {
+                messageHtml += content;
+            }
         }
-      } else {
-        messageHtml += content;
-      }
-    }
-    
-    messageHtml += "</div>";
-    
-    // 添加到HTML内容
-    this.htmlContent += messageHtml;
-    
-    // 保存当前状态
-    this.saveHtmlToFile();
-  }
 
-  // 保存HTML到文件
-  saveHtmlToFile(isComplete = false) {
-    try {
-      // 在Node.js环境中
-      if (typeof process !== 'undefined' && process.versions && process.versions.node) {
+        messageHtml += "</div>";
+
+        // 添加到HTML内容
+        this.htmlContent += messageHtml;
+
+        // 保存当前状态
+        this.saveHtmlToFile();
+    }
+
+    // 保存HTML到文件
+    saveHtmlToFile(isComplete = false) {
         try {
-          const fs = require('fs');
-          const path = require('path');
-          
-          // 创建logs目录（如果不存在）
-          const logsDir = path.join(process.cwd(), 'logs');
-          if (!fs.existsSync(logsDir)) {
-            fs.mkdirSync(logsDir, { recursive: true });
-          }
-          
-          // 构建完整的文件路径
-          const filePath = path.join(logsDir, this.htmlFilename);
-          
-          // 写入文件
-          fs.writeFileSync(filePath, this.htmlContent, 'utf8');
-          
-          if (isComplete) {
-            console.log(`HTML文件已保存: ${filePath}`);
-          }
+            // 在Node.js环境中
+            if (typeof process !== 'undefined' && process.versions && process.versions.node) {
+                try {
+                    const fs = require('fs');
+                    const path = require('path');
+
+                    // 创建logs目录（如果不存在）
+                    const logsDir = path.join(process.cwd(), 'logs');
+                    if (!fs.existsSync(logsDir)) {
+                        fs.mkdirSync(logsDir, {recursive: true});
+                    }
+
+                    // 构建完整的文件路径
+                    const filePath = path.join(logsDir, this.htmlFilename);
+
+                    // 写入文件
+                    fs.writeFileSync(filePath, this.htmlContent, 'utf8');
+
+                    if (isComplete) {
+                        console.log(`HTML文件已保存: ${filePath}`);
+                    }
+                } catch (error) {
+                    console.warn('保存HTML文件失败:', error);
+                    // 不抛出错误，确保不影响原始功能
+                }
+            }
         } catch (error) {
-          console.warn('保存HTML文件失败:', error);
-          // 不抛出错误，确保不影响原始功能
+            console.warn('保存文件过程出错:', error);
+            // 不抛出错误，确保不影响原始功能
         }
-      }
-    } catch (error) {
-      console.warn('保存文件过程出错:', error);
-      // 不抛出错误，确保不影响原始功能
-    }
-  }
-
-  // 格式化工具调用
-  formatToolCalls(toolCalls) {
-    if (!toolCalls || !Array.isArray(toolCalls)) return [];
-    
-    return toolCalls.map(toolCall => {
-      let functionArgs = {};
-      try {
-        functionArgs = JSON.parse(toolCall.function?.arguments || '{}');
-      } catch (e) {
-        functionArgs = toolCall.function?.arguments || {};
-      }
-      
-      return {
-        function_name: toolCall.function?.name || 'unknown',
-        function_args: functionArgs
-      };
-    });
-  }
-
-  // 辅助函数：HTML转义
-  escapeHtml(text) {
-    if (!text) return '';
-    const map = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#039;'
-    };
-    return String(text).replace(/[&<>"']/g, m => map[m]);
-  }
-
-  // 检测并处理代码块
-  detectCodeBlocks(text) {
-    const lines = text.split('\n');
-    let inCodeBlock = false;
-    let language = '';
-    let codeContent = [];
-    let result = [];
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      
-      if (line.startsWith('```') && !inCodeBlock) {
-        inCodeBlock = true;
-        language = line.substring(3).trim() || 'plaintext';
-      } else if (line.startsWith('```') && inCodeBlock) {
-        inCodeBlock = false;
-        const code = codeContent.join('\n');
-        result.push(`<pre><code class="language-${language}">${code}</code></pre>`);
-        codeContent = [];
-      } else if (inCodeBlock) {
-        // 代码块内的内容不需要额外转义，因为已经在外层转义过了
-        codeContent.push(line);
-      } else {
-        result.push(line);
-      }
     }
 
-    // 处理未闭合的代码块
-    if (codeContent.length > 0) {
-      result.push(`<pre><code class="language-plaintext">${codeContent.join('\n')}</code></pre>`);
+    // 格式化工具调用
+    formatToolCalls(toolCalls) {
+        if (!toolCalls || !Array.isArray(toolCalls)) return [];
+
+        return toolCalls.map(toolCall => {
+            let functionArgs = {};
+            try {
+                functionArgs = JSON.parse(toolCall.function?.arguments || '{}');
+            } catch (e) {
+                functionArgs = toolCall.function?.arguments || {};
+            }
+
+            return {
+                function_name: toolCall.function?.name || 'unknown', function_args: functionArgs
+            };
+        });
     }
 
-    return result.join('\n');
-  }
-
-  // 检测并处理内联代码
-  detectInlineCode(text) {
-    const parts = text.split('`');
-    let result = [];
-    
-    for (let i = 0; i < parts.length; i++) {
-      if (i % 2 === 1) {  // 奇数索引是代码
-        result.push(`<code>${parts[i]}</code>`);
-      } else {
-        result.push(parts[i]);
-      }
+    // 辅助函数：HTML转义
+    escapeHtml(text) {
+        if (!text) return '';
+        const map = {
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+        };
+        return String(text).replace(/[&<>"']/g, m => map[m]);
     }
-    
-    return result.join('');
-  }
 
-  // 格式化JSON
-  formatJson(obj) {
-    try {
-      return JSON.stringify(obj, null, 2);
-    } catch (e) {
-      return String(obj);
+    // 检测并处理代码块
+    detectCodeBlocks(text) {
+        const lines = text.split('\n');
+        let inCodeBlock = false;
+        let language = '';
+        let codeContent = [];
+        let result = [];
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+
+            if (line.startsWith('```') && !inCodeBlock) {
+                inCodeBlock = true;
+                language = line.substring(3).trim() || 'plaintext';
+            } else if (line.startsWith('```') && inCodeBlock) {
+                inCodeBlock = false;
+                const code = codeContent.join('\n');
+                result.push(`<pre><code class="language-${language}">${code}</code></pre>`);
+                codeContent = [];
+            } else if (inCodeBlock) {
+                // 代码块内的内容不需要额外转义，因为已经在外层转义过了
+                codeContent.push(line);
+            } else {
+                result.push(line);
+            }
+        }
+
+        // 处理未闭合的代码块
+        if (codeContent.length > 0) {
+            result.push(`<pre><code class="language-plaintext">${codeContent.join('\n')}</code></pre>`);
+        }
+
+        return result.join('\n');
     }
-  }
+
+    // 检测并处理内联代码
+    detectInlineCode(text) {
+        const parts = text.split('`');
+        let result = [];
+
+        for (let i = 0; i < parts.length; i++) {
+            if (i % 2 === 1) {  // 奇数索引是代码
+                result.push(`<code>${parts[i]}</code>`);
+            } else {
+                result.push(parts[i]);
+            }
+        }
+
+        return result.join('');
+    }
+
+    // 格式化JSON
+    formatJson(obj) {
+        try {
+            return JSON.stringify(obj, null, 2);
+        } catch (e) {
+            return String(obj);
+        }
+    }
 }
 
 // 创建带拦截器的OpenAI客户端
 export function createChatExporterOpenAI(OpenAIClass, config) {
-  const originalInstance = new OpenAIClass(config);
-  
-  // 存储原始的 chat.completions.create 方法
-  const originalCreate = originalInstance.chat.completions.create.bind(originalInstance.chat.completions);
-  
-  // 拦截 chat.completions.create 方法
-  originalInstance.chat.completions.create = async function(...args) {
-    // 保存原始请求参数
-    const originalRequest = args[0];
-    
-    try {
-      // 创建拦截器实例（如果还没有）
-      if (!originalInstance._interceptor) {
-        originalInstance._interceptor = new OpenaiChatHtmlExporter();
-      }
-      
-      const interceptor = originalInstance._interceptor;
-      
-      // 尝试记录用户消息，但不影响原始请求
-      try {
-        interceptor.processUserMessages(originalRequest.messages);
-      } catch (loggingError) {
-        console.warn('记录用户消息时出错:', loggingError);
-        // 继续执行，不影响原始请求
-      }
-      
-      // 调用原始方法，使用原始参数
-      const response = await originalCreate(originalRequest);
-      
-      // 尝试记录AI响应，但不影响响应返回
-      try {
-        // 检查是否为 Azure 的 SSE 流式响应
-        if (response.headers && 
-            response.headers.get("content-type") && 
-            response.headers.get("content-type").includes("text/event-stream")) {
-          
-          // 读取流式响应内容
-          const responseBody = await response.text();
-          // 处理 SSE 流式响应，转换为标准格式
-          const standardResponse = interceptor.processAzureSSEResponse(responseBody);
-          // 记录处理后的响应
-          interceptor.processAIResponse(standardResponse);
-        } else {
-          // 处理普通响应
-          interceptor.processAIResponse(response);
-        }
-      } catch (loggingError) {
-        console.warn('记录AI响应时出错:', loggingError);
-        // 继续执行，不影响响应返回
-      }
-      
-      return response;
-    } catch (error) {
-      // 如果是API调用错误，尝试记录错误但不影响错误传播
-      try {
-        if (originalInstance._interceptor) {
-          originalInstance._interceptor.logError(error.toString());
-        }
-      } catch (loggingError) {
-        console.warn('记录错误信息时出错:', loggingError);
-      }
-      
-      // 抛出原始错误
-      throw error;
-    }
-  };
-  
-  // 添加拦截器访问器，确保不影响原始实例的其他功能
-  return new Proxy(originalInstance, {
-    get(target, prop) {
-      // 只处理 interceptor 属性，其他属性保持原样
-      if (prop === 'interceptor') {
+    const originalInstance = new OpenAIClass(config);
+
+    // 存储原始的 chat.completions.create 方法
+    const originalCreate = originalInstance.chat.completions.create.bind(originalInstance.chat.completions);
+
+    // 拦截 chat.completions.create 方法
+    originalInstance.chat.completions.create = async function (...args) {
+        // 保存原始请求参数
+        const originalRequest = args[0];
+
         try {
-          if (!target._interceptor) {
-            target._interceptor = new OpenaiChatHtmlExporter();
-          }
-          return target._interceptor;
+            // 创建拦截器实例（如果还没有）
+            if (!originalInstance._interceptor) {
+                originalInstance._interceptor = new OpenaiChatHtmlExporter();
+            }
+
+            const interceptor = originalInstance._interceptor;
+
+            // 尝试记录用户消息，但不影响原始请求
+            try {
+                interceptor.processUserMessages(originalRequest.messages);
+            } catch (loggingError) {
+                console.warn('记录用户消息时出错:', loggingError);
+                // 继续执行，不影响原始请求
+            }
+
+            // 调用原始方法，使用原始参数
+            const response = await originalCreate(originalRequest);
+
+            // 尝试记录AI响应，但不影响响应返回
+            try {
+                // 检查是否为流式响应
+                if (originalRequest.stream === true) {
+                    // 流被消费前先复制它，使用 tee() 方法分割流
+                    const [stream1, stream2] = response.tee();
+
+                    // 使用异步IIFE在后台处理一个流的副本
+                    (async () => {
+                        try {
+                            // 处理流式响应
+                            let fullContent = "";
+                            let allToolCalls = [];
+                            let currentToolCalls = {}; // 用于收集同一工具调用的不同部分
+
+                            // 使用 for await 迭代流式响应的一个副本
+                            for await (const part of stream1) {
+                                if (part.choices && part.choices.length > 0) {
+                                    const choice = part.choices[0];
+                                    const delta = choice.delta || {};
+
+                                    // 处理文本内容
+                                    if (delta.content != null) {
+                                        fullContent += delta.content;
+                                    }
+
+                                    // 处理工具调用
+                                    if (delta.tool_calls && delta.tool_calls.length > 0) {
+                                        for (const toolCall of delta.tool_calls) {
+                                            const toolIndex = toolCall.index || 0;
+
+                                            // 如果是新的工具调用索引，初始化结构
+                                            if (!currentToolCalls[toolIndex]) {
+                                                currentToolCalls[toolIndex] = {
+                                                    id: toolCall.id || "",
+                                                    type: toolCall.type || "function",
+                                                    function: {
+                                                        name: "", arguments: ""
+                                                    }
+                                                };
+                                            }
+
+                                            // 更新工具调用信息
+                                            if (toolCall.function) {
+                                                if (toolCall.function.name) {
+                                                    currentToolCalls[toolIndex].function.name += toolCall.function.name;
+                                                }
+                                                if (toolCall.function.arguments) {
+                                                    currentToolCalls[toolIndex].function.arguments += toolCall.function.arguments;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // 检查是否完成
+                                    if (choice.finish_reason != null) {
+                                        // 收集所有完成的工具调用
+                                        for (const toolCall of Object.values(currentToolCalls)) {
+                                            if (toolCall.function.name) { // 仅添加有名称的工具调用
+                                                allToolCalls.push(toolCall);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 处理流式响应的完整内容
+                            interceptor.processStreamCompletionResponse(fullContent, allToolCalls);
+                        } catch (err) {
+                            console.warn('处理流式响应时出错:', err);
+                            // 错误处理不会影响原始流的消费
+                        }
+                    })();
+
+                    // 返回原始流的另一个副本给调用方
+                    return stream2;
+                } else {
+                    // 处理普通响应
+                    interceptor.processAIResponse(response);
+                    return response;
+                }
+            } catch (loggingError) {
+                console.warn('记录AI响应时出错:', loggingError);
+                // 继续执行，不影响响应返回
+                return response;
+            }
         } catch (error) {
-          console.warn('创建拦截器实例时出错:', error);
-          return null;
+            // 如果是API调用错误，尝试记录错误但不影响错误传播
+            try {
+                if (originalInstance._interceptor) {
+                    originalInstance._interceptor.logError(error.toString());
+                }
+            } catch (loggingError) {
+                console.warn('记录错误信息时出错:', loggingError);
+            }
+
+            // 抛出原始错误
+            throw error;
         }
-      }
-      return target[prop];
-    }
-  });
+    };
+
+    // 添加拦截器访问器，确保不影响原始实例的其他功能
+    return new Proxy(originalInstance, {
+        get(target, prop) {
+            // 只处理 interceptor 属性，其他属性保持原样
+            if (prop === 'interceptor') {
+                try {
+                    if (!target._interceptor) {
+                        target._interceptor = new OpenaiChatHtmlExporter();
+                    }
+                    return target._interceptor;
+                } catch (error) {
+                    console.warn('创建拦截器实例时出错:', error);
+                    return null;
+                }
+            }
+            return target[prop];
+        }
+    });
 }
