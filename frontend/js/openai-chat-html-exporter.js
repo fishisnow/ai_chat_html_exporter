@@ -350,6 +350,7 @@ class OpenaiChatHtmlExporter {
                   position: relative;
                   align-self: flex-start;
                   max-width: 90%;
+                  padding-right: 36px;
               }
               
               .user:before {
@@ -561,6 +562,7 @@ class OpenaiChatHtmlExporter {
                   margin: 8px 0;
                   position: relative;
                   padding: 16px;
+                  padding-top: 20px;
                   border-radius: var(--radius-sm);
                   border: 1px solid var(--color-border);
                   box-shadow: var(--shadow-sm);
@@ -1003,13 +1005,7 @@ class OpenaiChatHtmlExporter {
                 // 添加工具信息图标和隐藏的工具数据（如果存在）
                 if (content.tools && content.tools.length > 0) {
                     const toolsJson = JSON.stringify(content.tools, null, 2);
-                    messageHtml += `
-                        <svg class="tools-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" title="查看可用工具">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M14 16l3 3 3-3m0 0v-8" />
-                        </svg>
-                        <div class="tools-data" data-tools="${this.escapeHtml(toolsJson)}" style="display:none;"></div>
-                    `;
+                    messageHtml += `<svg class="tools-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" title="查看可用工具"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7" /><path stroke-linecap="round" stroke-linejoin="round" d="M14 16l3 3 3-3m0 0v-8" /></svg><div class="tools-data" data-tools="${this.escapeHtml(toolsJson)}" style="display:none;"></div>`;
                 }
             }
         } else {
