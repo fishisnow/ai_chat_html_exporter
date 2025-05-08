@@ -54,6 +54,7 @@ interface OpenAIResponse {
 interface OpenAIRequestParams {
     messages: Message[];
     stream?: boolean;
+    tools?: any[];
     // 其他可能的参数
 }
 
@@ -64,6 +65,12 @@ interface StreamToolCall {
         name: string;
         arguments: string;
     };
+}
+
+// 定义用户增强消息类型
+interface EnhancedUserMessage {
+    text: string | MessageContent[];
+    tools?: any[];
 }
 
 class OpenaiChatHtmlExporter {
@@ -89,7 +96,7 @@ class OpenaiChatHtmlExporter {
     }
 
     // 处理用户消息并添加到HTML
-    processUserMessages(messages: Message[]): void {
+    processUserMessages(messages: Message[], tools?: any[]): void {
         if (!messages || !Array.isArray(messages)) return;
 
         try {
@@ -114,35 +121,77 @@ class OpenaiChatHtmlExporter {
             // 仅处理新消息
             for (let i = this.processedMessageCount; i < messages.length; i++) {
                 const message = messages[i];
+                if (!message) {
+                    continue
+                }
 
                 try {
-                    // 检查content是否为数组
-                    if (Array.isArray(message.content)) {
-                        // 处理多部分内容，确保每个部分的处理错误不会影响其他部分
-                        const processedParts = message.content.map(part => {
-                            try {
-                                switch (part.type) {
-                                    case 'image_url':
-                                        return this.processImageContent(part.image_url);
-                                    case 'text':
-                                        return this.processTextContent(String(part.text || ''));
-                                    default:
-                                        return this.processContent(JSON.stringify(part));
-                                }
-                            } catch (err) {
-                                console.warn(`处理消息部分时出错 (type: ${part.type}):`, err);
-                                // 返回原始内容的字符串形式
-                                return JSON.stringify(part);
-                            }
-                        }).filter(Boolean);
+                    // 检查是否是最后一条用户消息并且存在tools字段
+                    if (message.role === "user" && i === messages.length - 1 && tools && tools.length > 0) {
+                        // 创建包含tools字段的增强消息内容
+                        const enhancedContent = {
+                            text: message.content,
+                            tools: tools
+                        };
 
-                        this.appendMessageToHtml(message.role, processedParts.join('\n'));
+                        if (Array.isArray(message.content)) {
+                            // 如果原始内容是数组，则处理多部分内容
+                            const processedParts = message.content.map(part => {
+                                try {
+                                    switch (part.type) {
+                                        case 'image_url':
+                                            return this.processImageContent(part.image_url);
+                                        case 'text':
+                                            return this.processTextContent(String(part.text || ''));
+                                        default:
+                                            return this.processContent(JSON.stringify(part));
+                                    }
+                                } catch (err) {
+                                    console.warn(`处理消息部分时出错 (type: ${part.type}):`, err);
+                                    return JSON.stringify(part);
+                                }
+                            }).filter(Boolean);
+
+                            // 添加处理后的多部分内容和tools信息
+                            this.appendMessageToHtml(message.role, {
+                                text: processedParts.join('\n'),
+                                tools: tools
+                            });
+                        } else {
+                            // 处理普通文本内容并添加tools信息
+                            this.appendMessageToHtml(message.role, {
+                                text: message.content,
+                                tools: tools
+                            });
+                        }
                     } else {
-                        // 处理普通文本内容
-                        this.appendMessageToHtml(
-                            message.role,
-                            this.processTextContent(String(message.content || ''))
-                        );
+                        // 处理普通消息（无tools）
+                        if (Array.isArray(message.content)) {
+                            // 处理多部分内容
+                            const processedParts = message.content.map(part => {
+                                try {
+                                    switch (part.type) {
+                                        case 'image_url':
+                                            return this.processImageContent(part.image_url);
+                                        case 'text':
+                                            return this.processTextContent(String(part.text || ''));
+                                        default:
+                                            return this.processContent(JSON.stringify(part));
+                                    }
+                                } catch (err) {
+                                    console.warn(`处理消息部分时出错 (type: ${part.type}):`, err);
+                                    return JSON.stringify(part);
+                                }
+                            }).filter(Boolean);
+
+                            this.appendMessageToHtml(message.role, processedParts.join('\n'));
+                        } else {
+                            // 处理普通文本内容
+                            this.appendMessageToHtml(
+                                message.role,
+                                this.processTextContent(String(message.content || ''))
+                            );
+                        }
                     }
 
                     this.processedMessageCount++;
@@ -253,6 +302,15 @@ class OpenaiChatHtmlExporter {
         // 添加到HTML
         this.appendMessageToHtml("assistant", assistantMessage);
         this.processedMessageCount++;
+        
+        // 如果有工具输出，处理工具输出
+        if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
+            assistantMessage.tool_calls.forEach(toolCall => {
+                if (toolCall.function_name === 'shell' && toolCall.function_args.output) {
+                    this.appendToolOutput(toolCall.function_args.output);
+                }
+            });
+        }
 
         // 完成当前对话，关闭并重新创建HTML文件
         this.closeHtmlFile();
@@ -269,6 +327,15 @@ class OpenaiChatHtmlExporter {
         // 添加到HTML
         this.appendMessageToHtml("assistant", assistantMessage);
         this.processedMessageCount++;
+        
+        // 如果有工具输出，处理工具输出
+        if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
+            assistantMessage.tool_calls.forEach(toolCall => {
+                if (toolCall.function_name === 'shell' && toolCall.function_args.output) {
+                    this.appendToolOutput(toolCall.function_args.output);
+                }
+            });
+        }
 
         // 完成当前对话，关闭并重新创建HTML文件
         this.closeHtmlFile();
@@ -279,6 +346,14 @@ class OpenaiChatHtmlExporter {
         this.appendMessageToHtml("system", `错误: ${errorMessage}`);
         this.processedMessageCount++;
         this.closeHtmlFile();
+    }
+
+    // 添加工具输出
+    appendToolOutput(output: string): void {
+        // 简化工具输出，直接添加到 HTML 内容中
+        const toolHtml = `<div class="tool">${this.escapeHtml(output)}</div>`;
+        this.htmlContent += toolHtml;
+        this.saveHtmlToFile();
     }
 
     // 创建新的HTML文件
@@ -470,10 +545,10 @@ class OpenaiChatHtmlExporter {
                     font-size: 13.5px;
                 }
                 .tool-call-header {
-                    margin: 14px 0 0 0;
+                    margin: 0;
                     display: flex;
                     align-items: center;
-                    padding: 10px 14px;
+                    padding: 8px 12px;
                     background-color: var(--color-code-bg);
                     border-radius: var(--radius-sm) var(--radius-sm) 0 0;
                     font-weight: 500;
@@ -497,12 +572,47 @@ class OpenaiChatHtmlExporter {
                 }
   
                 .tool-call-container {
+                    margin: 10px 0;
+                    border-radius: var(--radius-sm);
+                    overflow: hidden;
+                    box-shadow: var(--shadow-sm);
+                }
+                
+                .tool-call-header + pre {
+                    margin-top: 0;
+                    margin-bottom: 0;
+                    border-top: none;
+                    border-top-left-radius: 0;
+                    border-top-right-radius: 0;
+                    box-shadow: none;
+                }
+                
+                /* 工具调用代码部分 */
+                .tool-call-container pre {
+                    margin: 0;
+                    padding: 12px 14px;
+                }
+  
+                .tools-container {
                     margin: 14px 0;
                     border-radius: var(--radius-sm);
                     overflow: hidden;
                 }
                 
-                .tool-call-header + pre {
+                .tools-header {
+                    margin: 14px 0 0 0;
+                    display: flex;
+                    align-items: center;
+                    padding: 10px 14px;
+                    background-color: var(--color-code-bg);
+                    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+                    font-weight: 500;
+                    color: var(--color-text);
+                    border: 1px solid var(--color-border);
+                    border-bottom: none;
+                }
+                
+                .tools-header + pre {
                     margin-top: 0;
                     border-top: none;
                     border-top-left-radius: 0;
@@ -535,8 +645,19 @@ class OpenaiChatHtmlExporter {
                 /* tool 样式 */
                 .tool {
                     background-color: var(--color-code-bg);
-                    margin: 16px 0;
+                    margin: 8px 0;
                     position: relative;
+                    padding: 16px;
+                    border-radius: var(--radius-sm);
+                    border: 1px solid var(--color-border);
+                    box-shadow: var(--shadow-sm);
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                    font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+                    font-size: 13.5px;
+                    line-height: 1.5;
+                    color: var(--color-text);
+                    overflow-x: auto;
                 }
                 
                 .tool:before {
@@ -552,6 +673,7 @@ class OpenaiChatHtmlExporter {
                     font-weight: 500;
                     box-shadow: var(--shadow-sm);
                     border: 1px solid var(--color-border);
+                    z-index: 1;
                 }
                 
                 /* HTML代码样式 */
@@ -650,14 +772,255 @@ class OpenaiChatHtmlExporter {
                 .hljs-punctuation {
                     color: #9e9e9e;
                 }
+
+                /* 用户消息中的工具图标 */
+                .tools-icon {
+                    position: absolute;
+                    top: 10px;
+                    right: 10px;
+                    width: 18px;
+                    height: 18px;
+                    cursor: pointer;
+                    color: #999;
+                    opacity: 0.7;
+                    transition: all 0.2s ease;
+                    background-color: var(--color-background);
+                    padding: 3px;
+                    border-radius: 4px;
+                    box-shadow: var(--shadow-sm);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10;
+                    border: 1px solid var(--color-border);
+                }
+                
+                .tools-icon:hover {
+                    opacity: 1;
+                    box-shadow: var(--shadow-md);
+                    transform: translateY(-1px);
+                }
+                
+                /* 工具信息弹出层 */
+                .tools-popup {
+                    display: none;
+                    position: fixed;
+                    background: var(--color-card);
+                    border: 1px solid var(--color-border);
+                    border-radius: var(--radius-md);
+                    padding: 14px;
+                    width: 400px;
+                    max-width: 90vw;
+                    max-height: 60vh;
+                    overflow: hidden;
+                    z-index: 100;
+                    box-shadow: var(--shadow-md);
+                }
+                
+                .tools-popup-content {
+                    height: calc(60vh - 60px);
+                    overflow: hidden;
+                }
+                
+                .tools-popup pre {
+                    margin: 0;
+                    white-space: pre-wrap;
+                    padding: 12px;
+                    border-radius: var(--radius-sm);
+                    background-color: var(--color-code-bg);
+                    font-size: 13px;
+                    overflow: auto;
+                    height: 100%;
+                    border: none;
+                }
+                
+                .tools-popup code {
+                    background: transparent;
+                    padding: 0;
+                    font-size: 13px;
+                }
+                
+                .tools-popup-visible {
+                    display: block;
+                    animation: fadeIn 0.2s ease-out;
+                }
+                
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(-5px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                
+                /* 关闭按钮 */
+                .tools-popup-close {
+                    position: absolute;
+                    top: 8px;
+                    right: 10px;
+                    cursor: pointer;
+                    font-size: 16px;
+                    color: #999;
+                    line-height: 1;
+                    width: 20px;
+                    height: 20px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 50%;
+                    background: var(--color-code-bg);
+                    transition: all 0.2s ease;
+                }
+                
+                .tools-popup-close:hover {
+                    background-color: var(--color-border);
+                }
+ 
+                /* 工具信息标题 */
+                .tools-popup-title {
+                    font-size: 13px;
+                    font-weight: 500;
+                    color: #666;
+                    margin: 0 0 12px 0;
+                    padding: 0 20px 8px 0;
+                    border-bottom: 1px solid var(--color-border);
+                    line-height: 1.5;
+                }
             </style>
             <!-- 使用代码高亮库 -->
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
             <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
             <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/json.min.js"></script>
             <script>
-                // 确保代码高亮在动态内容加载后执行
-                document.addEventListener('DOMContentLoaded', (event) => {
+                document.addEventListener('DOMContentLoaded', function() {
+                    // 创建工具信息弹出层
+                    const popupContainer = document.createElement('div');
+                    popupContainer.className = 'tools-popup';
+                    popupContainer.innerHTML = '<span class="tools-popup-close" title="关闭">&times;</span>' +
+                        '<div class="tools-popup-title">可用工具列表</div>' +
+                        '<div class="tools-popup-content">' +
+                        '<pre><code class="language-json"></code></pre>' +
+                        '</div>';
+                    document.body.appendChild(popupContainer);
+                    
+                    // 关闭按钮事件
+                    popupContainer.querySelector('.tools-popup-close').addEventListener('click', function() {
+                        popupContainer.classList.remove('tools-popup-visible');
+                    });
+                    
+                    // 初始化所有工具图标的点击事件
+                    function initToolsIcons() {
+                        document.querySelectorAll('.tools-icon').forEach(function(icon) {
+                            if (!icon.dataset.initialized) {
+                                icon.dataset.initialized = 'true';
+                                icon.addEventListener('click', handleToolIconClick);
+                            }
+                        });
+                    }
+                    
+                    // 工具图标点击处理函数
+                    function handleToolIconClick(e) {
+                        const icon = e.currentTarget;
+                        const message = icon.closest('.message');
+                        const toolsData = message.querySelector('.tools-data');
+                        
+                        if (toolsData) {
+                            // 获取工具数据
+                            const toolsJson = toolsData.getAttribute('data-tools');
+                            
+                            // 填充弹出层内容
+                            const codeElement = popupContainer.querySelector('code');
+                            codeElement.textContent = toolsJson;
+                            
+                            // 应用语法高亮
+                            if (typeof hljs !== 'undefined') {
+                                hljs.highlightElement(codeElement);
+                            }
+                            
+                            // 定位弹出层
+                            const iconRect = icon.getBoundingClientRect();
+                            popupContainer.style.top = iconRect.bottom + 5 + 'px';
+                            popupContainer.style.right = window.innerWidth - iconRect.right + 'px';
+                            
+                            // 显示弹出层
+                            popupContainer.classList.add('tools-popup-visible');
+                            
+                            // 调整位置，确保在视窗内
+                            adjustPopupPosition(popupContainer);
+                            
+                            // 阻止事件冒泡
+                            e.stopPropagation();
+                        }
+                    }
+                    
+                    // 调整弹出框位置，确保在视窗内
+                    function adjustPopupPosition(popup) {
+                        const rect = popup.getBoundingClientRect();
+                        const viewportHeight = window.innerHeight;
+                        const viewportWidth = window.innerWidth;
+                        
+                        // 检查是否超出底部边界
+                        if (rect.bottom > viewportHeight) {
+                            // 如果弹出框太大，则将其放到顶部附近
+                            if (rect.height > viewportHeight * 0.6) {
+                                popup.style.top = '20px';
+                            } else {
+                                const overflowBottom = rect.bottom - viewportHeight;
+                                popup.style.top = parseInt(popup.style.top || '0') - overflowBottom - 10 + 'px';
+                            }
+                        }
+                        
+                        // 检查是否超出右侧边界
+                        if (rect.right > viewportWidth) {
+                            popup.style.right = '10px';
+                            popup.style.left = 'auto';
+                        }
+                        
+                        // 检查是否超出左侧边界
+                        if (rect.left < 0) {
+                            popup.style.left = '10px';
+                            popup.style.right = 'auto';
+                        }
+                    }
+                    
+                    // 点击文档其他区域关闭弹出框
+                    document.addEventListener('click', function(e) {
+                        if (!e.target.closest('.tools-popup') && !e.target.closest('.tools-icon')) {
+                            popupContainer.classList.remove('tools-popup-visible');
+                        }
+                    });
+                    
+                    // 窗口大小改变时重新调整弹出框的位置
+                    window.addEventListener('resize', function() {
+                        if (popupContainer.classList.contains('tools-popup-visible')) {
+                            adjustPopupPosition(popupContainer);
+                        }
+                    });
+                    
+                    // 初始化现有图标
+                    initToolsIcons();
+                    
+                    // 使用 MutationObserver 监听 DOM 变化，处理动态添加的工具图标
+                    const observer = new MutationObserver(function(mutations) {
+                        let hasNewIcons = false;
+                        
+                        mutations.forEach(function(mutation) {
+                            if (mutation.type === 'childList') {
+                                const icons = mutation.target.querySelectorAll('.tools-icon:not([data-initialized])');
+                                if (icons.length > 0) {
+                                    hasNewIcons = true;
+                                }
+                            }
+                        });
+                        
+                        if (hasNewIcons) {
+                            initToolsIcons();
+                        }
+                    });
+                    
+                    // 开始观察 DOM 变化
+                    observer.observe(document.body, { 
+                        childList: true, 
+                        subtree: true 
+                    });
+
                     if (typeof hljs !== 'undefined') {
                         hljs.configure({
                             languages: ['json', 'javascript', 'python', 'bash', 'html', 'css'],
@@ -666,7 +1029,7 @@ class OpenaiChatHtmlExporter {
                         hljs.highlightAll();
                         
                         // 初始化所有JSON代码块
-                        document.querySelectorAll('pre code.language-json').forEach((block) => {
+                        document.querySelectorAll('pre code.language-json').forEach(function(block) {
                             hljs.highlightElement(block);
                         });
                     }
@@ -705,33 +1068,47 @@ class OpenaiChatHtmlExporter {
     }
 
     // 添加消息到HTML
-    appendMessageToHtml(role: string, content: string | AssistantMessage): void {
+    appendMessageToHtml(role: string, content: string | AssistantMessage | EnhancedUserMessage): void {
         let messageHtml = `<div class="message ${role}">`;
 
         if (role === "user" || role === "system") {
-            // 用户或系统消息，直接添加内容，不做额外转义
-            messageHtml += content as string;
+            // 用户或系统消息
+            if (typeof content === 'string') {
+                // 直接添加内容，不做额外转义
+                messageHtml += content;
+            } else {
+                // 处理增强消息对象
+                const enhancedMessage = content as EnhancedUserMessage;
+                if (enhancedMessage.text) {
+                    // 文本内容
+                    messageHtml += typeof enhancedMessage.text === 'string' 
+                        ? this.processTextContent(enhancedMessage.text)
+                        : 'Complex content';
+                }
+                
+                // 添加工具信息（如果存在）
+                if (enhancedMessage.tools && enhancedMessage.tools.length > 0) {
+                    const toolsJson = JSON.stringify(enhancedMessage.tools, null, 2);
+                    messageHtml += `
+                        <svg class="tools-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" title="查看可用工具">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M14 16l3 3 3-3m0 0v-8" />
+                        </svg>
+                        <div class="tools-data" data-tools="${this.escapeHtml(toolsJson)}" style="display:none;"></div>
+                    `;
+                }
+            }
         } else {
             // AI响应
             if (typeof content === 'object') {
                 // 主要文本内容
-                messageHtml += (content as AssistantMessage).content || "";
+                const assistantMessage = content as AssistantMessage;
+                messageHtml += assistantMessage.content || "";
 
                 // 工具调用
-                const assistantMessage = content as AssistantMessage;
                 if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
                     assistantMessage.tool_calls.forEach(toolCall => {
-                        messageHtml += `
-                <div class="tool-call-container">
-                  <div class="tool-call-header">
-                    <svg class="tool-call-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" />
-                    </svg>
-                    <div class="tool-call-title">Tool | ${toolCall.function_name}</div>
-                  </div>
-                  <pre><code>${this.formatJson(toolCall.function_args)}</code></pre>
-                </div>
-              `;
+                        messageHtml += `<div class="tool-call-container"><div class="tool-call-header"><svg class="tool-call-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" /></svg><div class="tool-call-title">Tool | ${toolCall.function_name}</div></div><pre><code>${this.formatJson(toolCall.function_args)}</code></pre></div>`;
                     });
                 }
             } else {
@@ -908,7 +1285,7 @@ export function createChatExporterOpenAI(OpenAIClass: any, config: any): any {
 
             // 尝试记录用户消息，但不影响原始请求
             try {
-                interceptor.processUserMessages(originalRequest.messages);
+                interceptor.processUserMessages(originalRequest.messages, originalRequest.tools);
             } catch (loggingError) {
                 console.warn('记录用户消息时出错:', loggingError);
                 // 继续执行，不影响原始请求
