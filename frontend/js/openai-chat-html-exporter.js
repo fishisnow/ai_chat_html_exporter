@@ -559,20 +559,8 @@ class OpenaiChatHtmlExporter {
               /* tool 样式 */
               .tool {
                   background-color: var(--color-code-bg);
-                  margin: 8px 0;
+                  margin: 16px 0;
                   position: relative;
-                  padding: 16px;
-                  padding-top: 20px;
-                  border-radius: var(--radius-sm);
-                  border: 1px solid var(--color-border);
-                  box-shadow: var(--shadow-sm);
-                  white-space: pre-wrap;
-                  word-wrap: break-word;
-                  font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
-                  font-size: 13.5px;
-                  line-height: 1.5;
-                  color: var(--color-text);
-                  overflow-x: auto;
               }
               
               .tool:before {
