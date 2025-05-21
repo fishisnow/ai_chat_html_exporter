@@ -1,3 +1,6 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
 // OpenAI 拦截器，用于捕获对话记录并自动导出为HTML
 
 // 定义接口
@@ -129,11 +132,6 @@ class OpenaiChatHtmlExporter {
                     // 检查是否是最后一条用户消息并且存在tools字段
                     if (message.role === "user" && i === messages.length - 1 && tools && tools.length > 0) {
                         // 创建包含tools字段的增强消息内容
-                        const enhancedContent = {
-                            text: message.content,
-                            tools: tools
-                        };
-
                         if (Array.isArray(message.content)) {
                             // 如果原始内容是数组，则处理多部分内容
                             const processedParts = message.content.map(part => {
@@ -1115,9 +1113,6 @@ class OpenaiChatHtmlExporter {
             // 在Node.js环境中
             if (typeof process !== 'undefined' && process.versions && process.versions.node) {
                 try {
-                    const fs = require('fs');
-                    const path = require('path');
-
                     // 创建logs目录（如果不存在）
                     const logsDir = path.join(process.cwd(), 'logs');
                     if (!fs.existsSync(logsDir)) {
@@ -1154,6 +1149,7 @@ class OpenaiChatHtmlExporter {
             try {
                 functionArgs = JSON.parse(toolCall.function?.arguments || '{}');
             } catch (e) {
+                console.log("formatToolCalls parse tool args failed, err:" + e)
                 functionArgs = toolCall.function?.arguments || {};
             }
 
@@ -1182,8 +1178,8 @@ class OpenaiChatHtmlExporter {
         const lines = text.split('\n');
         let inCodeBlock = false;
         let language = '';
-        let codeContent: string[] = [];
-        let result: string[] = [];
+        const codeContent: string[] = [];
+        const result: string[] = [];
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
@@ -1195,7 +1191,7 @@ class OpenaiChatHtmlExporter {
                 inCodeBlock = false;
                 const code = codeContent.join('\n');
                 result.push(`<pre><code class="language-${language}">${code}</code></pre>`);
-                codeContent = [];
+                codeContent.length = 0; // 清空数组但保持引用
             } else if (inCodeBlock) {
                 // 代码块内的内容不需要额外转义，因为已经在外层转义过了
                 codeContent.push(line);
@@ -1215,7 +1211,7 @@ class OpenaiChatHtmlExporter {
     // 检测并处理内联代码
     detectInlineCode(text: string): string {
         const parts = text.split('`');
-        let result: string[] = [];
+        const result: string[] = [];
 
         for (let i = 0; i < parts.length; i++) {
             if (i % 2 === 1) {  // 奇数索引是代码
@@ -1232,7 +1228,7 @@ class OpenaiChatHtmlExporter {
     formatJson(obj: any): string {
         try {
             return JSON.stringify(obj, null, 2);
-        } catch (e) {
+        } catch (_) {
             return String(obj);
         }
     }
@@ -1290,8 +1286,8 @@ export function createChatExporterOpenAI(OpenAIClass: any, config: any): any {
                         try {
                             // 处理流式响应
                             let fullContent = "";
-                            let allToolCalls: ToolCall[] = [];
-                            let currentToolCalls: Record<number, StreamToolCall> = {}; // 用于收集同一工具调用的不同部分
+                            const allToolCalls: ToolCall[] = [];
+                            const currentToolCalls: Record<number, StreamToolCall> = {}; // 用于收集同一工具调用的不同部分
 
                             // 使用 for await 迭代流式响应的一个副本
                             for await (const part of stream1) {

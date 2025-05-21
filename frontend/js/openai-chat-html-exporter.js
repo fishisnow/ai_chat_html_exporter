@@ -46,11 +46,6 @@ class OpenaiChatHtmlExporter {
                     // 检查是否是最后一条用户消息并且存在tools字段
                     if (message.role === "user" && i === messages.length - 1 && tools && tools.length > 0) {
                         // 创建包含tools字段的增强消息内容
-                        const enhancedContent = {
-                            text: message.content,
-                            tools: tools
-                        };
-
                         if (Array.isArray(message.content)) {
                             // 如果原始内容是数组，则处理多部分内容
                             const processedParts = message.content.map(part => {
@@ -76,7 +71,10 @@ class OpenaiChatHtmlExporter {
                             });
                         } else {
                             // 处理普通文本内容并添加tools信息
-                            this.appendMessageToHtml(message.role, enhancedContent);
+                            this.appendMessageToHtml(message.role, {
+                                text: message.content,
+                                tools: tools
+                            });
                         }
                     } else {
                         // 处理普通消息（无tools）
