@@ -124,6 +124,11 @@ class HtmlGenerator:
                     border: 1px solid var(--color-border);
                 }
                 
+                /* 有名字的用户消息样式 */
+                .user[data-name]:before {
+                    content: "用户 - " attr(data-name);
+                }
+                
                 .assistant {
                     background-color: var(--color-assistant-bg);
                     margin-left: 10%;
@@ -146,6 +151,11 @@ class HtmlGenerator:
                     box-shadow: var(--shadow-sm);
                     border: 1px solid var(--color-border);
                 }
+                
+                /* 有名字的AI消息样式 */
+                .assistant[data-name]:before {
+                    content: "AI - " attr(data-name);
+                }
 
                 .system {
                     background-color: var(--color-system-bg);
@@ -167,6 +177,11 @@ class HtmlGenerator:
                     font-weight: 500;
                     box-shadow: var(--shadow-sm);
                     border: 1px solid var(--color-border);
+                }
+                
+                /* 有名字的系统消息样式 */
+                .system[data-name]:before {
+                    content: "系统 - " attr(data-name);
                 }
 
                 pre {
@@ -278,6 +293,11 @@ class HtmlGenerator:
                     font-weight: 500;
                     box-shadow: var(--shadow-sm);
                     border: 1px solid var(--color-border);
+                }
+                
+                /* 有名字的工具消息样式 */
+                .tool[data-name]:before {
+                    content: "Tool - " attr(data-name);
                 }
                 
                 /* 用户消息中的工具图标 */
@@ -762,12 +782,15 @@ class HtmlGenerator:
             
         return result
 
-    def append_message(self, role: str, content: Any) -> None:
+    def append_message(self, role: str, content: Any, name: str = None) -> None:
         """将新的对话内容追加到 HTML 文件中"""
         if not self.html_file:
             self.create_html_file()
-            
-        message_html = f'<div class="message {role}">'
+
+        if name:
+            message_html = f'<div class="message {role}" data-name="{self._escape_html(name)}">'
+        else:
+            message_html = f'<div class="message {role}">'
 
         if role == "user" or role == "system":
             # 用户消息直接展示
@@ -817,25 +840,6 @@ class HtmlGenerator:
         </html>
         """)
 
-
-    def export_conversation(self, conversation: List[Dict]) -> None:
-        """导出完整对话历史到 HTML 文件
-        
-        Args:
-            conversation: 对话历史列表，每个元素应包含 role 和 content
-        """
-        # 创建新文件
-        self.create_html_file()
-        
-        # 添加所有对话内容
-        for message in conversation:
-            self.append_message(
-                message["role"], 
-                message["content"] if message["role"] == "user" else message
-            )
-        
-        # 关闭文件
-        self.close_html_file() 
 
     def append_divider(self, title: str = ""):
         """添加分隔线到对话中

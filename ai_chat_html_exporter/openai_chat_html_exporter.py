@@ -35,6 +35,7 @@ class LoggerTransport(HtmlGenerator):
             # 解析请求体
             request_body = json.loads(request_content.decode('utf-8'))
             messages = request_body.get("messages", [])
+            model = request_body.get("model")
             tools = request_body.get("tools", [])
 
             # 判断是否是新对话
@@ -58,6 +59,7 @@ class LoggerTransport(HtmlGenerator):
                 message = messages[i]
                 role = message["role"]
                 content = message["content"]
+                name = message["name"] if "name" in message else None
 
                 # 如果是最后一条用户消息并且存在tools字段，添加tools信息
                 if role == "user" and i == len(messages) - 1 and tools:
@@ -66,9 +68,9 @@ class LoggerTransport(HtmlGenerator):
                         "text": content,
                         "tools": tools
                     }
-                    self.append_message(role, enhanced_content)
+                    self.append_message(role, enhanced_content, name)
                 else:
-                    self.append_message(role, content)
+                    self.append_message(role, content, name)
 
                 # 更新计数器
                 self._processed_message_count += 1
@@ -83,7 +85,7 @@ class LoggerTransport(HtmlGenerator):
                     "tool_calls": self._format_tool_calls(message.get("tool_calls", [])),
                 }
 
-                self.append_message("assistant", assistant_message)
+                self.append_message("assistant", assistant_message, name=model)
                 # 更新计数器
                 self._processed_message_count += 1
 

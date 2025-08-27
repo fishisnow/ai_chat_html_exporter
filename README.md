@@ -18,7 +18,7 @@
 - 💎 **精美展示** - 响应式界面设计，代码语法高亮，JSON 数据格式化
 - 🌐 **即时预览** - 支持浏览器中实时查看对话历史
 - 🎨 **图片支持** - 自动识别对话中的 base64 和 URL 图片，展示图像内容
-- 🛠 **多框架支持** - 完美兼容 LangChain 和 OpenAI API
+- 🛠 **多框架支持** - 完美兼容 LangChain 和 OpenAI API, Autogen
 
 ## 📋 应用场景
 
@@ -96,14 +96,34 @@ const openaiConfig = {
 const openaiClient = createChatExporterOpenAI(OpenAI, openaiConfig);
 ```
 
+### Autogen 集成示例
+
+```python
+from ai_chat_html_exporter.openai_chat_html_exporter import with_html_logger
+from openai import AsyncAzureOpenAI
+from autogen_ext.models.openai import BaseOpenAIChatCompletionClient
+
+
+@with_html_logger  # 只需添加这个装饰器
+def get_openai_client():
+    return AsyncAzureOpenAI(azure_endpoint="YOUR_AZURE_ENDPOINT",
+                            api_key="YOUR API_KEY",
+                            azure_deployment="gpt-4o",
+                            api_version="2024-08-01-preview")
+
+def get_base_model_client():
+    client = get_openai_client()
+    return BaseOpenAIChatCompletionClient(client=client, create_args={'model': 'gpt-4o', 'temperature': 0})
+```
+
+
+
 ## ⚙️ 自定义配置
 
 ```python
 # 自定义输出目录
 from ai_chat_html_exporter import HtmlExportCallbackHandler
 exporter = HtmlExportCallbackHandler(output_dir="my_chat_logs")
-
-# 更多配置选项即将推出...
 ```
 
 ## 📊 输出效果展示

@@ -74,9 +74,9 @@ class HtmlExportCallbackHandler(StdOutCallbackHandler, HtmlGenerator):
                 "response": message.content,
                 "tool_calls": self._format_tool_calls(message.tool_calls)
             }
-            self.append_message("assistant", assistant_message)
+            self.append_message("assistant", assistant_message, message.name)
         else:
-            self.append_message(_convert_message_role(message.type), message.content)
+            self.append_message(_convert_message_role(message.type), message.content, message.name)
 
     def _is_new_conversation(self, messages: list[BaseMessage]) -> bool:
         """检查是否是新的对话轮次
@@ -99,7 +99,7 @@ class HtmlExportCallbackHandler(StdOutCallbackHandler, HtmlGenerator):
         self.append_message("assistant", {
             "response": assistant_message.content,
             "tool_calls": self._format_tool_calls(assistant_message.tool_calls)
-        })
+        }, assistant_message.name)
         self.previous_messages_count = self.previous_messages_count + 1
 
     def on_tool_end(

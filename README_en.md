@@ -97,6 +97,27 @@ const openaiConfig = {
 const openaiClient = createChatExporterOpenAI(OpenAI, openaiConfig);
 ```
 
+### Autogen Integration Example
+
+```python
+from ai_chat_html_exporter.openai_chat_html_exporter import with_html_logger
+from openai import AsyncAzureOpenAI
+from autogen_ext.models.openai import BaseOpenAIChatCompletionClient
+
+
+@with_html_logger  # 只需添加这个装饰器
+def get_openai_client():
+    return AsyncAzureOpenAI(azure_endpoint="YOUR_AZURE_ENDPOINT",
+                            api_key="YOUR API_KEY",
+                            azure_deployment="gpt-4o",
+                            api_version="2024-08-01-preview")
+
+def get_base_model_client():
+    client = get_openai_client()
+    return BaseOpenAIChatCompletionClient(client=client, create_args={'model': 'gpt-4o', 'temperature': 0})
+```
+
+
 ## ⚙️ Custom Configuration
 ```python
 # Customize the output directory
