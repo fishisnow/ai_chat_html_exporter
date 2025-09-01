@@ -1,0 +1,64 @@
+{
+  "name": "ai-chat-html-exporter",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A JavaScript/TypeScript library that intercepts OpenAI chat conversations and automatically exports them as beautiful HTML files",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "browser": "dist/index.umd.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c --watch",
+    "clean": "rimraf dist",
+    "validate": "node scripts/validate-build.js",
+    "prepublishOnly": "npm run clean && npm run build && npm run validate",
+    "test": "echo \"No tests specified\" && exit 0",
+    "lint": "echo \"Linting skipped for TypeScript files\"",
+    "lint:fix": "echo \"Linting skipped for TypeScript files\""
+  },
+  "keywords": [
+    "openai",
+    "chat",
+    "html",
+    "export",
+    "conversation",
+    "ai",
+    "gpt",
+    "interceptor",
+    "javascript",
+    "typescript",
+    "frontend"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/ai-chat-html-exporter.git",
+    "directory": "packages/javascript"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/ai-chat-html-exporter/issues"
+  },
+  "homepage": "https://github.com/yourusername/ai-chat-html-exporter/tree/main/packages/javascript#readme",
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-typescript": "^11.1.5",
+    "rimraf": "^5.0.0",
+    "rollup": "^4.9.6",
+    "tslib": "^2.6.2",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "openai": ">=4.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+} 

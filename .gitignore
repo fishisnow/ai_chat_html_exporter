@@ -1,7 +1,77 @@
-.venv
-.idea
-*.egg-info/
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Build outputs
+dist/
+build/
+lib/
+
+# Logs
+logs/
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Operating System
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+
+# ESLint cache
+.eslintcache
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# Temporary files
+.tmp/
+temp/
+
+# Python related (from old structure)
 __pycache__/
-node_modules
-logs
-build
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Python virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/

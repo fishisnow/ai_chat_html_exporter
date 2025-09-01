@@ -1,5 +1,46 @@
 {
-  "devDependencies": {
-    "@types/node": "^22.15.3"
+  "name": "ai-chat-html-exporter-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A multi-language AI chat conversation HTML exporter - workspace root",
+  "workspaces": [
+    "packages/javascript"
+  ],
+  "scripts": {
+    "build:js": "cd packages/javascript && npm run build",
+    "dev:js": "cd packages/javascript && npm run dev",
+    "clean:js": "cd packages/javascript && npm run clean",
+    "validate:js": "cd packages/javascript && npm run validate",
+    "install:js": "cd packages/javascript && npm install",
+    "publish:js": "cd packages/javascript && npm publish",
+    "build:all": "npm run build:js",
+    "clean:all": "npm run clean:js"
+  },
+  "keywords": [
+    "ai",
+    "chat",
+    "html",
+    "export",
+    "openai",
+    "langchain",
+    "conversation",
+    "workspace",
+    "python",
+    "javascript",
+    "typescript"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/ai-chat-html-exporter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/ai-chat-html-exporter/issues"
+  },
+  "homepage": "https://github.com/yourusername/ai-chat-html-exporter#readme",
+  "devDependencies": {},
+  "engines": {
+    "node": ">=14.0.0"
   }
 }

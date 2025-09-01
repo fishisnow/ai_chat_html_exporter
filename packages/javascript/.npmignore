@@ -1,0 +1,40 @@
+# Source files
+src/
+examples/
+*.test.*
+*.spec.*
+
+# Build tools
+tsconfig.json
+rollup.config.js
+.eslintrc.js
+
+# Development files
+.gitignore
+.npmignore
+
+# Logs and temporary files
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python related (old structure)
+ai_chat_html_exporter/
+__pycache__/
+*.py[cod]
+setup.py
+*.egg-info/
+
+# Node.js
+node_modules/
+npm-debug.log*
+
+# Environment
+.env* 

@@ -1,0 +1,27 @@
+{
+  "root": true,
+  "extends": [
+    "eslint:recommended"
+  ],
+  "parserOptions": {
+    "ecmaVersion": 2020,
+    "sourceType": "module"
+  },
+  "env": {
+    "node": true,
+    "browser": true,
+    "es6": true
+  },
+  "rules": {
+    "prefer-const": "error",
+    "no-var": "error",
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }]
+  },
+  "ignorePatterns": [
+    "dist/",
+    "node_modules/",
+    "examples/",
+    "scripts/",
+    "**/*.d.ts"
+  ]
+} 
