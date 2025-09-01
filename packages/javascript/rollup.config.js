@@ -1,7 +1,8 @@
 import typescript from '@rollup/plugin-typescript';
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
-import { readFileSync } from 'fs';
+import { readFileSync, copyFileSync, mkdirSync } from 'fs';
+import { dirname } from 'path';
 
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
 
@@ -11,6 +12,24 @@ const external = [
     'path'
 ];
 
+// 复制 CSS 文件的插件
+function copyAssets() {
+    return {
+        name: 'copy-assets',
+        generateBundle() {
+            try {
+                // 确保 dist 目录存在
+                mkdirSync('dist', { recursive: true });
+                // 复制 CSS 文件
+                copyFileSync('src/styles.css', 'dist/styles.css');
+                console.log('✅ 已复制 styles.css 到 dist/');
+            } catch (error) {
+                console.warn('⚠️ 复制 CSS 文件失败:', error.message);
+            }
+        }
+    };
+}
+
 const commonPlugins = [
     resolve({
         preferBuiltins: true
@@ -19,7 +38,8 @@ const commonPlugins = [
     typescript({
         tsconfig: './tsconfig.json',
         exclude: ['**/*.test.*', '**/*.spec.*']
-    })
+    }),
+    copyAssets()
 ];
 
 export default [

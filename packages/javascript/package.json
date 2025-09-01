@@ -34,17 +34,17 @@
     "typescript",
     "frontend"
   ],
-  "author": "Your Name",
+  "author": "fishisnow",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/ai-chat-html-exporter.git",
+    "url": "https://github.com/fishisnow/ai_chat_html_exporter.git",
     "directory": "packages/javascript"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/ai-chat-html-exporter/issues"
+    "url": "https://github.com/fishisnow/ai-chat-html-exporter/issues"
   },
-  "homepage": "https://github.com/yourusername/ai-chat-html-exporter/tree/main/packages/javascript#readme",
+  "homepage": "https://github.com/fishisnow/ai-chat-html-exporter/tree/main/packages/javascript#readme",
   "devDependencies": {
     "@types/node": "^22.15.3",
     "@rollup/plugin-commonjs": "^25.0.7",

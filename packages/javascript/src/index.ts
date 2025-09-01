@@ -390,239 +390,69 @@ export class OpenaiChatHtmlExporter {
     }
 
     private generateStyles(): string {
-        const baseStyles = `<style>
-            :root {
-                --color-text: #1a1a1a;
-                --color-background: #ffffff;
-                --color-accent: #0070f3;
-                --color-border: #f0f0f0;
-                --color-card: #ffffff;
-                --color-user-bg: #f9fafb;
-                --color-assistant-bg: #ffffff;
-                --color-system-bg: #f9f9f9;
-                --color-code-bg: #f7f7f7;
-                --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
-                --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.05);
-                --radius-sm: 6px;
-                --radius-md: 10px;
-                --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        let baseStyles = '';
+        
+        try {
+            // 在 Node.js 环境中读取外部 CSS 文件
+            if (typeof process !== 'undefined' && process.versions && process.versions.node) {
+                // 尝试从多个可能的路径读取 CSS 文件
+                const possiblePaths = [
+                    // 当前工作目录下的 styles.css (如果直接引用)
+                    path.join(process.cwd(), 'styles.css'),
+                    // node_modules 中的样式文件
+                    path.join(process.cwd(), 'node_modules', 'ai-chat-html-exporter', 'dist', 'styles.css'),
+                    // 相对于当前文件的路径 (对于源码)
+                    path.join(process.cwd(), 'dist', 'styles.css'),
+                    // 包内的相对路径
+                    './styles.css',
+                    '../styles.css'
+                ];
+
+                let cssContent = '';
+                let stylesFound = false;
+
+                for (const stylesPath of possiblePaths) {
+                    try {
+                        if (fs.existsSync(stylesPath)) {
+                            cssContent = fs.readFileSync(stylesPath, 'utf8');
+                            stylesFound = true;
+                            break;
+                        }
+                    } catch (err) {
+                        // 继续尝试下一个路径
+                        continue;
+                    }
+                }
+
+                if (stylesFound) {
+                    baseStyles = `<style>\n${cssContent}\n${this.options.customStyles || ''}\n</style>`;
+                } else {
+                    // 如果所有路径都找不到文件，使用默认样式
+                    baseStyles = this.getDefaultStyles();
+                }
+            } else {
+                // 非 Node.js 环境，使用默认样式
+                baseStyles = this.getDefaultStyles();
             }
-
-            body {
-                font-family: var(--font-sans);
-                max-width: 768px;
-                margin: 0 auto;
-                padding: 40px 16px;
-                background-color: var(--color-background);
-                line-height: 1.6;
-                color: var(--color-text);
-                font-size: 15px;
-            }
-
-            .message {
-                margin: 20px 0;
-                padding: 16px 18px;
-                border-radius: var(--radius-md);
-                white-space: pre-wrap;
-                word-wrap: break-word;
-                font-size: 15px;
-                line-height: 1.6;
-                box-shadow: var(--shadow-sm);
-                transition: all 0.2s ease;
-                position: relative;
-                border: 1px solid var(--color-border);
-            }
-
-            .message:hover {
-                box-shadow: var(--shadow-md);
-            }
-
-            .user {
-                background-color: var(--color-user-bg);
-                margin-right: 10%;
-                max-width: 90%;
-                padding-right: 36px;
-            }
-
-            .user:before {
-                content: "用户";
-                position: absolute;
-                top: -8px;
-                left: 12px;
-                background: #f2f2f2;
-                color: #666;
-                font-size: 12px;
-                padding: 1px 6px;
-                border-radius: 4px;
-                font-weight: 500;
-                box-shadow: var(--shadow-sm);
-                border: 1px solid var(--color-border);
-            }
-
-            .assistant {
-                background-color: var(--color-assistant-bg);
-                margin-left: 10%;
-                max-width: 90%;
-            }
-
-            .assistant:before {
-                content: "AI";
-                position: absolute;
-                top: -8px;
-                left: 12px;
-                background: #e9e9e9;
-                color: #666;
-                font-size: 12px;
-                padding: 1px 6px;
-                border-radius: 4px;
-                font-weight: 500;
-                box-shadow: var(--shadow-sm);
-                border: 1px solid var(--color-border);
-            }
-
-            .system {
-                background-color: var(--color-system-bg);
-                margin: 16px 0;
-                font-style: italic;
-            }
-
-            .system:before {
-                content: "系统";
-                position: absolute;
-                top: -8px;
-                left: 12px;
-                background: #ececec;
-                color: #666;
-                font-size: 12px;
-                padding: 1px 6px;
-                border-radius: 4px;
-                font-weight: 500;
-                box-shadow: var(--shadow-sm);
-                border: 1px solid var(--color-border);
-            }
-
-            .divider {
-                text-align: center;
-                margin: 30px 0;
-                font-weight: 600;
-                color: #666;
-                position: relative;
-                font-size: 16px;
-            }
-
-            .divider:before,
-            .divider:after {
-                content: "";
-                position: absolute;
-                top: 50%;
-                width: 30%;
-                height: 1px;
-                background-color: var(--color-border);
-            }
-
-            .divider:before { left: 0; }
-            .divider:after { right: 0; }
-
-            pre {
-                background-color: var(--color-code-bg);
-                padding: 14px 16px;
-                border-radius: var(--radius-sm);
-                overflow-x: auto;
-                margin: 14px 0;
-                font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
-                font-size: 13.5px;
-                line-height: 1.5;
-                border: 1px solid var(--color-border);
-            }
-
-            code {
-                font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
-                background-color: var(--color-code-bg);
-                padding: 2px 4px;
-                border-radius: 3px;
-                font-size: 13.5px;
-            }
-
-            h1 {
-                font-size: 1.75rem;
-                font-weight: 700;
-                margin-bottom: 32px;
-                text-align: center;
-                letter-spacing: -0.015em;
-                color: var(--color-text);
-            }
-
-            .image-container {
-                margin: 14px 0;
-                padding: 12px;
-                background: var(--color-code-bg);
-                border-radius: var(--radius-sm);
-                border: 1px solid var(--color-border);
-            }
-
-            .image-container img {
-                display: block;
-                max-width: 100%;
-                height: auto;
-                border-radius: 4px;
-            }
-
-            .tool-call-container {
-                margin: 10px 0;
-                border-radius: var(--radius-sm);
-                overflow: hidden;
-                box-shadow: var(--shadow-sm);
-            }
-
-            .tool-call-header {
-                display: flex;
-                align-items: center;
-                padding: 8px 12px;
-                background-color: var(--color-code-bg);
-                border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-                font-weight: 500;
-                color: var(--color-text);
-                border: 1px solid var(--color-border);
-                border-bottom: none;
-            }
-
-            .tools-icon {
-                position: absolute;
-                top: 10px;
-                right: 10px;
-                width: 18px;
-                height: 18px;
-                cursor: pointer;
-                color: #999;
-                opacity: 0.7;
-                transition: all 0.2s ease;
-                background-color: var(--color-background);
-                padding: 3px;
-                border-radius: 4px;
-                box-shadow: var(--shadow-sm);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 10;
-                border: 1px solid var(--color-border);
-            }
-
-            .tools-icon:hover {
-                opacity: 1;
-                box-shadow: var(--shadow-md);
-                transform: translateY(-1px);
-            }
-
-            @media (max-width: 600px) {
-                body { padding: 20px 12px; }
-                .message { margin: 16px 0; padding: 12px 14px; }
-                pre { padding: 12px; }
-            }
-
-            ${this.options.customStyles || ''}
-        </style>`;
+        } catch (error) {
+            console.warn('读取样式文件失败，使用默认样式:', error);
+            baseStyles = this.getDefaultStyles();
+        }
 
         return baseStyles;
+    }
+
+    private getDefaultStyles(): string {
+        return `<style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 768px; margin: 0 auto; padding: 40px 16px; }
+            .message { margin: 20px 0; padding: 16px; border-radius: 8px; white-space: pre-wrap; }
+            .user { background-color: #f9fafb; }
+            .assistant { background-color: #ffffff; border: 1px solid #e5e7eb; }
+            .system { background-color: #f3f4f6; font-style: italic; }
+            pre { background-color: #f7f7f7; padding: 12px; border-radius: 4px; overflow-x: auto; }
+            code { background-color: #f7f7f7; padding: 2px 4px; border-radius: 3px; }
+            ${this.options.customStyles || ''}
+        </style>`;
     }
 
     private generateScript(): string {
