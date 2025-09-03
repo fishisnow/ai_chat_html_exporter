@@ -17,7 +17,8 @@
     "clean": "rimraf dist",
     "validate": "node scripts/validate-build.js",
     "prepublishOnly": "npm run clean && npm run build && npm run validate",
-    "test": "echo \"No tests specified\" && exit 0",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "echo \"Linting skipped for TypeScript files\"",
     "lint:fix": "echo \"Linting skipped for TypeScript files\""
   },
@@ -46,10 +47,12 @@
   },
   "homepage": "https://github.com/fishisnow/ai-chat-html-exporter/tree/main/packages/javascript#readme",
   "devDependencies": {
-    "@types/node": "^22.15.3",
     "@rollup/plugin-commonjs": "^25.0.7",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-typescript": "^11.1.5",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.15.3",
+    "vitest": "^1.0.0",
     "rimraf": "^5.0.0",
     "rollup": "^4.9.6",
     "tslib": "^2.6.2",
@@ -61,4 +64,4 @@
   "engines": {
     "node": ">=14.0.0"
   }
-} 
+}

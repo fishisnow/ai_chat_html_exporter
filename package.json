@@ -39,8 +39,10 @@
     "url": "https://github.com/yourusername/ai-chat-html-exporter/issues"
   },
   "homepage": "https://github.com/yourusername/ai-chat-html-exporter#readme",
-  "devDependencies": {},
   "engines": {
     "node": ">=14.0.0"
+  },
+  "dependencies": {
+    "vitest": "^3.2.4"
   }
 }
