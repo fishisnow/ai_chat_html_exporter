@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { CSS_CONTENT } from './styles';
 
 // 类型定义
 interface ToolCall {
@@ -21,6 +22,7 @@ interface Message {
     role: string;
     content: string | MessageContent[];
     tool_calls?: ToolCall[];
+    name?: string;
 }
 
 interface MessageContent {
@@ -171,12 +173,12 @@ export class OpenaiChatHtmlExporter {
             this.appendMessageToHtml(message.role, {
                 text: processedParts.join('\n'),
                 tools: tools
-            });
+            }, message.name);
         } else {
             this.appendMessageToHtml(message.role, {
                 text: message.content,
                 tools: tools
-            });
+            }, message.name);
         }
     }
 
@@ -186,11 +188,12 @@ export class OpenaiChatHtmlExporter {
                 .map(part => this.processMessagePart(part))
                 .filter(Boolean);
 
-            this.appendMessageToHtml(message.role, processedParts.join('\n'));
+            this.appendMessageToHtml(message.role, processedParts.join('\n'), message.name);
         } else {
             this.appendMessageToHtml(
                 message.role,
-                this.processTextContent(String(message.content || ''))
+                this.processTextContent(String(message.content || '')),
+                message.name
             );
         }
     }
@@ -307,7 +310,7 @@ export class OpenaiChatHtmlExporter {
 
         this.appendMessageToHtml("assistant", assistantMessage);
         this.processedMessageCount++;
-        
+
         this.handleToolOutputs(assistantMessage.tool_calls);
         this.closeHtmlFile();
     }
@@ -323,7 +326,7 @@ export class OpenaiChatHtmlExporter {
 
         this.appendMessageToHtml("assistant", assistantMessage);
         this.processedMessageCount++;
-        
+
         this.handleToolOutputs(assistantMessage.tool_calls);
         this.closeHtmlFile();
     }
@@ -390,74 +393,148 @@ export class OpenaiChatHtmlExporter {
     }
 
     private generateStyles(): string {
-        let baseStyles = '';
-        
-        try {
-            // 在 Node.js 环境中读取外部 CSS 文件
-            if (typeof process !== 'undefined' && process.versions && process.versions.node) {
-                // 尝试从多个可能的路径读取 CSS 文件
-                const possiblePaths = [
-                    // 当前工作目录下的 styles.css (如果直接引用)
-                    path.join(process.cwd(), 'styles.css'),
-                    // node_modules 中的样式文件
-                    path.join(process.cwd(), 'node_modules', 'ai-chat-html-exporter', 'dist', 'styles.css'),
-                    // 相对于当前文件的路径 (对于源码)
-                    path.join(process.cwd(), 'dist', 'styles.css'),
-                    // 包内的相对路径
-                    './styles.css',
-                    '../styles.css'
-                ];
-
-                let cssContent = '';
-                let stylesFound = false;
-
-                for (const stylesPath of possiblePaths) {
-                    try {
-                        if (fs.existsSync(stylesPath)) {
-                            cssContent = fs.readFileSync(stylesPath, 'utf8');
-                            stylesFound = true;
-                            break;
-                        }
-                    } catch (err) {
-                        // 继续尝试下一个路径
-                        continue;
-                    }
-                }
-
-                if (stylesFound) {
-                    baseStyles = `<style>\n${cssContent}\n${this.options.customStyles || ''}\n</style>`;
-                } else {
-                    // 如果所有路径都找不到文件，使用默认样式
-                    baseStyles = this.getDefaultStyles();
-                }
-            } else {
-                // 非 Node.js 环境，使用默认样式
-                baseStyles = this.getDefaultStyles();
-            }
-        } catch (error) {
-            console.warn('读取样式文件失败，使用默认样式:', error);
-            baseStyles = this.getDefaultStyles();
-        }
-
-        return baseStyles;
+        // 直接使用导入的 CSS 内容
+        return `<style>\n${CSS_CONTENT}\n${this.options.customStyles || ''}\n</style>`;
     }
 
-    private getDefaultStyles(): string {
-        return `<style>
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 768px; margin: 0 auto; padding: 40px 16px; }
-            .message { margin: 20px 0; padding: 16px; border-radius: 8px; white-space: pre-wrap; }
-            .user { background-color: #f9fafb; }
-            .assistant { background-color: #ffffff; border: 1px solid #e5e7eb; }
-            .system { background-color: #f3f4f6; font-style: italic; }
-            pre { background-color: #f7f7f7; padding: 12px; border-radius: 4px; overflow-x: auto; }
-            code { background-color: #f7f7f7; padding: 2px 4px; border-radius: 3px; }
-            ${this.options.customStyles || ''}
-        </style>`;
-    }
 
     private generateScript(): string {
         return `<script>
             document.addEventListener('DOMContentLoaded', function() {
+                // 全局弹出层，只创建一次
+                const popupContainer = document.createElement('div');
+                popupContainer.className = 'tools-popup';
+                popupContainer.innerHTML = \`
+                    <span class="tools-popup-close" title="关闭">&times;</span>
+                    <div class="tools-popup-title">可用工具列表</div>
+                    <div class="tools-popup-content">
+                        <pre><code class="language-json"></code></pre>
+                    </div>
+                \`;
+                document.body.appendChild(popupContainer);
+                
+                // 关闭按钮事件
+                popupContainer.querySelector('.tools-popup-close').addEventListener('click', function() {
+                    popupContainer.classList.remove('tools-popup-visible');
+                });
+                
+                // 初始化所有工具图标的点击事件
+                function initToolsIcons() {
+                    document.querySelectorAll('.tools-icon').forEach(icon => {
+                        if (!icon.dataset.initialized) {
+                            icon.dataset.initialized = 'true';
+                            icon.addEventListener('click', handleToolIconClick);
+                        }
+                    });
+                }
+                
+                // 工具图标点击处理函数
+                function handleToolIconClick(e) {
+                    const icon = e.currentTarget;
+                    const message = icon.closest('.message');
+                    const toolsData = message.querySelector('.tools-data');
+                    
+                    if (toolsData) {
+                        // 获取工具数据
+                        const toolsJson = toolsData.getAttribute('data-tools');
+                        
+                        // 填充弹出层内容
+                        const codeElement = popupContainer.querySelector('code');
+                        codeElement.textContent = toolsJson;
+                        
+                        // 应用语法高亮
+                        if (window.hljs) {
+                            hljs.highlightElement(codeElement);
+                        }
+                        
+                        // 定位弹出层
+                        const iconRect = icon.getBoundingClientRect();
+                        popupContainer.style.top = \`\${iconRect.bottom + 5}px\`;
+                        popupContainer.style.right = \`\${window.innerWidth - iconRect.right}px\`;
+                        
+                        // 显示弹出层
+                        popupContainer.classList.add('tools-popup-visible');
+                        
+                        // 调整位置
+                        adjustPopupPosition(popupContainer);
+                        
+                        // 阻止事件冒泡
+                        e.stopPropagation();
+                    }
+                }
+                
+                // 调整弹出框位置，确保在视窗内
+                function adjustPopupPosition(popup) {
+                    const rect = popup.getBoundingClientRect();
+                    const viewportHeight = window.innerHeight;
+                    const viewportWidth = window.innerWidth;
+                    
+                    // 检查是否超出底部边界
+                    if (rect.bottom > viewportHeight) {
+                        // 如果弹出框太大，则将其放到顶部附近
+                        if (rect.height > viewportHeight * 0.6) {
+                            popup.style.top = '20px';
+                        } else {
+                            const overflowBottom = rect.bottom - viewportHeight;
+                            popup.style.top = \`\${parseInt(popup.style.top || '0') - overflowBottom - 10}px\`;
+                        }
+                    }
+                    
+                    // 检查是否超出右侧边界
+                    if (rect.right > viewportWidth) {
+                        popup.style.right = '10px';
+                        popup.style.left = 'auto';
+                    }
+                    
+                    // 检查是否超出左侧边界
+                    if (rect.left < 0) {
+                        popup.style.left = '10px';
+                        popup.style.right = 'auto';
+                    }
+                }
+                
+                // 点击文档其他区域关闭弹出框
+                document.addEventListener('click', function(e) {
+                    if (!e.target.closest('.tools-popup') && !e.target.closest('.tools-icon')) {
+                        popupContainer.classList.remove('tools-popup-visible');
+                    }
+                });
+                
+                // 窗口大小改变时重新调整弹出框的位置
+                window.addEventListener('resize', function() {
+                    if (popupContainer.classList.contains('tools-popup-visible')) {
+                        adjustPopupPosition(popupContainer);
+                    }
+                });
+                
+                // 初始化现有图标
+                initToolsIcons();
+                
+                // 使用MutationObserver监听DOM变化，处理动态添加的工具图标
+                const observer = new MutationObserver(function(mutations) {
+                    let hasNewIcons = false;
+                    
+                    mutations.forEach(function(mutation) {
+                        if (mutation.type === 'childList') {
+                            const icons = mutation.target.querySelectorAll('.tools-icon:not([data-initialized])');
+                            if (icons.length > 0) {
+                                hasNewIcons = true;
+                            }
+                        }
+                    });
+                    
+                    if (hasNewIcons) {
+                        initToolsIcons();
+                    }
+                });
+                
+                // 开始观察DOM变化
+                observer.observe(document.getElementById('conversation'), { 
+                    childList: true, 
+                    subtree: true 
+                });
+                
+                // 初始化代码高亮
                 if (typeof hljs !== 'undefined') {
                     hljs.configure({
                         languages: ['json', 'javascript', 'python', 'bash', 'html', 'css'],
@@ -486,8 +563,10 @@ export class OpenaiChatHtmlExporter {
     /**
      * 添加消息到HTML
      */
-    private appendMessageToHtml(role: string, content: string | AssistantMessage | EnhancedUserMessage): void {
-        let messageHtml = `<div class="message ${role}">`;
+    private appendMessageToHtml(role: string, content: string | AssistantMessage | EnhancedUserMessage, name?: string): void {
+        let messageHtml = name
+            ? `<div class="message ${role}" data-name="${this.escapeHtml(name)}">`
+            : `<div class="message ${role}">`;
 
         if (role === "user" || role === "system") {
             messageHtml += this.processUserSystemMessage(content as string | EnhancedUserMessage);
@@ -509,7 +588,7 @@ export class OpenaiChatHtmlExporter {
         let html = '';
 
         if (enhancedMessage.text) {
-            html += typeof enhancedMessage.text === 'string' 
+            html += typeof enhancedMessage.text === 'string'
                 ? this.processTextContent(enhancedMessage.text)
                 : 'Complex content';
         }
@@ -535,6 +614,9 @@ export class OpenaiChatHtmlExporter {
                 assistantMessage.tool_calls.forEach(toolCall => {
                     html += `<div class="tool-call-container">
                         <div class="tool-call-header">
+                            <svg class="tool-call-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" />
+                            </svg>
                             <div class="tool-call-title">Tool | ${toolCall.function_name}</div>
                         </div>
                         <pre><code>${this.formatJson(toolCall.function_args)}</code></pre>
@@ -694,8 +776,8 @@ interface OpenAIClient {
  * @returns 增强的 OpenAI 客户端实例
  */
 export function createChatExporterOpenAI(
-    OpenAIClass: any, 
-    config: any, 
+    OpenAIClass: any,
+    config: any,
     exporterOptions?: ExporterOptions
 ): any {
     const originalInstance = new OpenAIClass(config) as OpenAIClient;

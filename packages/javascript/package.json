@@ -1,12 +1,18 @@
 {
   "name": "ai-chat-html-exporter",
   "version": "1.0.0",
-  "type": "module",
   "description": "A JavaScript/TypeScript library that intercepts OpenAI chat conversations and automatically exports them as beautiful HTML files",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "browser": "dist/index.umd.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "files": [
     "dist",
     "README.md"
@@ -15,6 +21,8 @@
     "build": "rollup -c",
     "dev": "rollup -c --watch",
     "clean": "rimraf dist",
+    "generate-css": "node scripts/generate-css-module.js",
+    "prebuild": "npm run generate-css",
     "validate": "node scripts/validate-build.js",
     "prepublishOnly": "npm run clean && npm run build && npm run validate",
     "test": "vitest run",

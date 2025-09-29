@@ -1,4 +1,7 @@
-:root {
+// 此文件由 scripts/generate-css-module.js 自动生成
+// 请不要手动编辑此文件，而是修改 src/styles.css
+
+export const CSS_CONTENT = `:root {
     --color-text: #1a1a1a;
     --color-background: #ffffff;
     --color-accent: #0070f3;
@@ -386,4 +389,6 @@ h1 {
     body { padding: 20px 12px; }
     .message { margin: 16px 0; padding: 12px 14px; }
     pre { padding: 12px; }
-} 
+} `;
+
+export default CSS_CONTENT;
