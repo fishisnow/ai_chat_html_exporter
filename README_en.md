@@ -71,31 +71,36 @@ def get_openai_client(self):
     return AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
 ```
 
-```javascript
-<script src="https://cdn.jsdelivr.net/gh/fishisnow/ai_chat_html_exporter@main/frontend/openai-chat-html-exporter.js"></script>
+### JavaScript/TypeScript Version
 
-// your script
-import OpenAI from 'openai';
+Suitable for Node.js backend and frontend applications.
 
-// configure OpenAI client
-const openaiConfig = {
-  apiKey: 'your-api-key',
-  baseUrl: 'https://api.openai.com/v1',
-};
+#### Installation
 
-// Create an OpenAI client with an interceptor, and automatically generate html files when testing in the nodejs environment
-const openaiClient = createChatExporterOpenAI(OpenAI, openaiConfig);
+```bash
+npm install ai-chat-html-exporter
 ```
+
+#### Basic Usage
 
 ```typescript
-// copy openai-chat-html-exporter.ts to your project
-import { createChatExporterOpenAI } from 'openai-chat-html-exporter';
-const openaiConfig = {
-  apiKey: 'your-api-key',
-  baseUrl: 'https://api.openai.com/v1',
-};
-const openaiClient = createChatExporterOpenAI(OpenAI, openaiConfig);
+import OpenAI from 'openai';
+import { createChatExporterOpenAI } from 'ai-chat-html-exporter';
+
+// Create OpenAI client with export functionality
+const openai = createChatExporterOpenAI(OpenAI, {
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+// Use OpenAI API normally, conversations will be automatically exported to HTML
+const response = await openai.chat.completions.create({
+  model: 'gpt-3.5-turbo',
+  messages: [
+    { role: 'user', content: 'Hello, how are you?' }
+  ],
+});
 ```
+
 
 ### Autogen Integration Example
 
@@ -119,10 +124,26 @@ def get_base_model_client():
 
 
 ## ⚙️ Custom Configuration
+
+### Python Configuration
+
 ```python
 # Customize the output directory
 from ai_chat_html_exporter import HtmlExportCallbackHandler
 exporter = HtmlExportCallbackHandler(output_dir="my_chat_logs")
+```
+
+### JavaScript Configuration
+
+```typescript
+const openai = createChatExporterOpenAI(OpenAI, config, {
+  outputDir: 'chat-exports',
+  enableFileOutput: true,
+  customStyles: `
+    .message { border-radius: 15px; }
+    .user { background: #e3f2fd; }
+  `
+});
 ```
 
 ## 📊 Output Example
@@ -138,8 +159,7 @@ exporter = HtmlExportCallbackHandler(output_dir="my_chat_logs")
 
 ## 🔗 Related Links
 
-- [Project Documentation](https://github.com/fishisnow/ai-chat-html-exporter)
-- [Issue Tracker](https://github.com/fishisnow/ai-chat-html-exporter/issues)
+- [AI Agent Prompts Collection Website](https://fishisnow.github.io/agents-prompts-collection/index.html) - AI conversation examples collected using this project
 
 ---
 

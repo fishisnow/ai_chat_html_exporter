@@ -109,31 +109,6 @@ const response = await openai.chat.completions.create({
 });
 ```
 
-#### 浏览器中使用
-
-```html
-<script src="https://unpkg.com/ai-chat-html-exporter/dist/index.umd.js"></script>
-<script>
-  const openai = AiChatHtmlExporter.createChatExporterOpenAI(OpenAI, {
-    apiKey: 'your-api-key',
-  });
-</script>
-```
-
-## 📋 版本对比
-
-| 特性 | Python 版本 | JavaScript/TypeScript 版本 |
-|------|-------------|---------------------------|
-| **环境支持** | Python 3.12+ | Node.js 14+ / 浏览器 |
-| **框架集成** | LangChain, OpenAI Python SDK | OpenAI JavaScript SDK |
-| **安装方式** | `pip install` | `npm install` |
-| **类型支持** | 部分类型提示 | 完整 TypeScript 支持 |
-| **浏览器支持** | ❌ | ✅ |
-| **流式响应** | ✅ | ✅ |
-| **工具调用** | ✅ | ✅ |
-| **自定义样式** | ✅ | ✅ |
-| **多格式构建** | ❌ | ESM/CJS/UMD |
-
 ## 📊 输出效果展示
 
 ![对话历史展示](images/example.png)
@@ -214,23 +189,6 @@ npm run dev
 - Node.js >= 14.0.0
 - 现代浏览器 (Chrome 60+, Firefox 55+, Safari 12+)
 
-## 🔜 未来规划
-
-- [ ] LangChain JavaScript 集成支持
-- [ ] 更多 AI 框架的集成（Anthropic、Cohere 等）
-- [ ] 实时对话预览功能
-- [ ] 对话数据的结构化导出（JSON、CSV）
-- [ ] 多主题样式模板
-
-## 🤝 参与贡献
-
-我们欢迎各种形式的贡献！
-
-1. Fork 本仓库
-2. 创建您的特性分支 (`git checkout -b feature/amazing-feature`)
-3. 提交您的更改 (`git commit -m 'Add some amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 打开一个 Pull Request
 
 ## 📄 许可证
 
@@ -238,10 +196,7 @@ npm run dev
 
 ## 🔗 相关链接
 
-- [项目文档](https://github.com/yourusername/ai-chat-html-exporter)
-- [问题反馈](https://github.com/yourusername/ai-chat-html-exporter/issues)
-- [Python 示例](examples/python/)
-- [JavaScript 示例](packages/javascript/examples/)
+- [AI Agent Prompts 收集网站](https://fishisnow.github.io/agents-prompts-collection/index.html) - 使用本项目收集的 AI 对话示例
 
 ---
 
