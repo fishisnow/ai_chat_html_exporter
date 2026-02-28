@@ -61,14 +61,14 @@ class HtmlExportCallbackHandler(StdOutCallbackHandler, HtmlGenerator):
             self.previous_messages_count = len(current_messages)
             self.is_first_conversation = False
             for message in current_messages:
-                self._append_message(message)
+                self._append_message(message, **kwargs)
         else:
             last_messages = current_messages[(self.previous_messages_count - len(current_messages)):]
             for message in last_messages:
-                self._append_message(message)
+                self._append_message(message, **kwargs)
             self.previous_messages_count = self.previous_messages_count + len(last_messages)
 
-    def _append_message(self, message):
+    def _append_message(self, message, **kwargs: Any):
         if message.type == 'ai' and message.tool_calls:
             assistant_message = {
                 "response": message.content,
@@ -76,7 +76,17 @@ class HtmlExportCallbackHandler(StdOutCallbackHandler, HtmlGenerator):
             }
             self.append_message("assistant", assistant_message, message.name)
         else:
-            self.append_message(_convert_message_role(message.type), message.content, message.name)
+            role = _convert_message_role(message.type)
+            content = message.content
+            if (role == "user" and kwargs.get("invocation_params")
+                    and message.content and isinstance(message.content, str)):
+                invocation_params = kwargs.get("invocation_params")
+                if invocation_params and isinstance(invocation_params, dict) and invocation_params.get("tools"):
+                    content = {
+                        "text": message.content,
+                        "tools": invocation_params.get("tools")
+                    }
+            self.append_message(role, content, message.name)
 
     def _is_new_conversation(self, messages: list[BaseMessage]) -> bool:
         """检查是否是新的对话轮次
